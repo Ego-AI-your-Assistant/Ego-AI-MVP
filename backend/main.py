@@ -37,13 +37,20 @@ app.add_middleware(
 
 add_exception_handlers(app)
 
-cors_origins = settings.backend_cors_origins_list
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://185.207.133.14:3000",
+    "http://185.207.133.14:8000",
+    "http://egoai.duckdns.org:3000",
+    "http://egoai.duckdns.org:8000"
+]
 
 logger.info(f"CORS origins: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://egoai.duckdns.org:3000'],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
