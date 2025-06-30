@@ -8,6 +8,7 @@ from app.core import settings
 from app.core.logging import logger
 from app.api import api_router
 from app.core.exception_handlers import add_exception_handlers
+from fastapi import Request
 
 # Alembic теперь управляет созданием таблиц, поэтому эта строка не нужна
 # from app.database import Base, engine 
