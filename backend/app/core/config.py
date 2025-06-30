@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ML_SERVICE_URL: str = "http://ego-ai-ml-service:8001/chat"
     
     FRONTEND_URL: str = "http://localhost:3000"
-    BACKEND_CORS_ORIGINS: str = "http://localhost:3000"
+    BACKEND_CORS_ORIGINS: str = "http://egoai.duckdns.org:3000"
     
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
