@@ -102,6 +102,18 @@ export const getChatHistory = async (user_id: string) => {
   }
 };
 
+export const deleteChatHistory = async (user_id: string) => {
+  console.log('Deleting chat history for user:', user_id);
+  try {
+    const response = await apiDelete(`/chats/delete_messages?user_id=${user_id}`);
+    console.log('deleteChatHistory response status:', response.status);
+    return response;
+  } catch (error) {
+    console.error('deleteChatHistory error:', error);
+    throw error;
+  }
+};
+
 export const getCurrentUserId = async (): Promise<string | null> => {
   try {
     console.log('Fetching current user ID...');
