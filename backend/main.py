@@ -17,6 +17,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("main")
 logger.info("[APP] FastAPI app is starting up...")
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
+
 app = FastAPI(
     title=settings.PROJECT_NAME
 )
@@ -39,7 +46,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
