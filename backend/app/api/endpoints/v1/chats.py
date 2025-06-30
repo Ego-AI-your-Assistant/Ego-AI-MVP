@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from typing import List
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -42,16 +42,23 @@ async def add_message(data: schemas.AddMessageRequest):
         return {"success": True, "warning": f"Message not stored: {str(e)}"}
 
 @router.get("/get_messages")
-async def get_message(user_id: str= Query(...)):
-    print(f"Getting messages for user {user_id}")
-    chat = await collection.find_one({"user_id": user_id})
-    if chat:
-        messages = chat.get("messages", [])
-        print(f"Found {len(messages)} messages for user {user_id}")
-        return messages
-    else:
-        print(f"No chat found for user {user_id}")
-        return []
+async def get_message(
+    user_id: str = Query(...),
+    collection = Depends(get_chat_collection)
+):
+    try:
+        logger.info(f"Getting messages for user {user_id}")
+        chat = await collection.find_one({"user_id": user_id})
+        if chat:
+            messages = chat.get("messages", [])
+            logger.info(f"Found {len(messages)} messages for user {user_id}")
+            return messages
+        else:
+            logger.info(f"No chat found for user {user_id}")
+            return []
+    except Exception as e:
+        logger.error(f"Error getting messages for user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve messages")
 
 @router.delete("/delete_messages")
 async def delete_messages(user_id: str = Query(...)):
