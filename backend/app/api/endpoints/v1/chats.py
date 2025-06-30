@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel
 from typing import List
 from motor.motor_asyncio import AsyncIOMotorClient
 import os 
 
 from app.database import schemas
+from app.core.logging import logger
 
 router = APIRouter()
 
@@ -14,30 +14,37 @@ client = AsyncIOMotorClient(MONGO_URI)
 db = client["ego_ai_db"]
 collection = db["chat_history"]
 
+def get_chat_collection():
+    """Dependency to get the chat collection"""
+    return collection
+
 @router.post("/add_message")
-async def add_message(data: schemas.AddMessageRequest):
+async def add_message(
+    data: schemas.AddMessageRequest,
+    collection = Depends(get_chat_collection)
+):
     try:
-        print(f"Adding message for user {data.user_id}: {data.role} - {data.content[:50]}...")
+        logger.info(f"Adding message for user {data.user_id}: {data.role} - {data.content[:50]}...")
         chat = await collection.find_one({"user_id": data.user_id})
         message = {
             "role": data.role, 
             "content": data.content
         }
         if chat:
-            print(f"Updating existing chat for user {data.user_id}")
+            logger.info(f"Updating existing chat for user {data.user_id}")
             await collection.update_one(
                 {"user_id": data.user_id},
                 {"$push": {"messages": message}}
             )
         else:
-            print(f"Creating new chat for user {data.user_id}")
+            logger.info(f"Creating new chat for user {data.user_id}")
             await collection.insert_one({
                 "user_id": data.user_id,
                 "messages": [message]
             })
         return {"success": True}
     except Exception as e:
-        print(f"Error adding message for user {data.user_id}: {str(e)}")
+        logger.error(f"Error adding message for user {data.user_id}: {str(e)}")
         # Return success to keep chat working even if storage fails
         return {"success": True, "warning": f"Message not stored: {str(e)}"}
 
@@ -61,13 +68,16 @@ async def get_message(
         raise HTTPException(status_code=500, detail="Failed to retrieve messages")
 
 @router.delete("/delete_messages")
-async def delete_messages(user_id: str = Query(...)):
+async def delete_messages(
+    user_id: str = Query(...),
+    collection = Depends(get_chat_collection)
+):
     try:
-        print(f"Deleting messages for user {user_id}")
+        logger.info(f"Deleting messages for user {user_id}")
         result = await collection.delete_one({"user_id": user_id})
-        print(f"Deleted {result.deleted_count} chat records for user {user_id}")
+        logger.info(f"Deleted {result.deleted_count} chat records for user {user_id}")
         return {"success": True, "deleted_count": result.deleted_count}
     except Exception as e:
-        print(f"Error deleting messages for user {user_id}: {str(e)}")
+        logger.error(f"Error deleting messages for user {user_id}: {str(e)}")
         # Return success even if deletion fails
         return {"success": True, "warning": f"Delete operation failed: {str(e)}"}
