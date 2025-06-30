@@ -3,7 +3,7 @@ import '../../components/Layout.css';
 import './Chat.css';
 import { chatWithML } from '@/utils/mlApi';
 import { createEvent } from '@/utils/calendarApi';
-import { saveChatMessage, getCurrentUserId, getChatHistory } from '@/utils/api';
+import { saveChatMessage, getCurrentUserId, getChatHistory, deleteChatHistory } from '@/utils/api';
 
 interface Message {
   sender: 'user' | 'llm';
@@ -136,6 +136,34 @@ export const Chat: React.FC = () => {
     }
   };
 
+  const deleteChatMessages = async () => {
+    if (!userId) {
+      console.error('User ID is not available');
+      return;
+    }
+    
+    if (!window.confirm('Are you sure you want to delete all chat messages? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      console.log('Deleting chat messages for user:', userId);
+      const response = await deleteChatHistory(userId);
+      
+      if (response.ok) {
+        console.log('Chat messages deleted successfully');
+        setMessages([]);
+      } else {
+        const error = await response.text();
+        console.error('Failed to delete chat messages:', error);
+        alert('Failed to delete chat messages. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting chat messages:', error);
+      alert('Error deleting chat messages. Please try again.');
+    }
+  };
+
   return (
     <div className="chat-container">
       {messages.length === 0 ? (
@@ -160,7 +188,6 @@ export const Chat: React.FC = () => {
           <div ref={chatEndRef} />
         </div>
       )}
-      
       <div className="chat-input-section">
         <div className="chat-input-container">
           <div className="input-branding">
@@ -193,6 +220,17 @@ export const Chat: React.FC = () => {
               </button>
             </div>
           </div>
+          {messages.length > 0 && (
+            <button 
+              onClick={deleteChatMessages}
+              className="chat-delete-btn"
+              title="Delete all chat messages"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 20.1891 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>

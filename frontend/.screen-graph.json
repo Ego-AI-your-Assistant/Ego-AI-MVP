@@ -16,44 +16,67 @@
       ]
     },
     {
+      "id": "src/screens/Auth/AuthCallback.tsx",
+      "label": "AuthCallback",
+      "routes": [
+        "/auth/callback"
+      ]
+    },
+    {
       "id": "src/components/ProtectedRoute.tsx",
       "label": "ProtectedRoute",
       "routes": [
-        "/calendar",
-        "/chat"
+        "/chat",
+        "/calendar"
       ]
     }
   ],
   "edges": [
     {
-      "id": "src\\screens\\Auth\\Auth.tsx:18:6-to-src\\components\\ProtectedRoute.tsx",
-      "source": "src\\screens\\Auth\\Auth.tsx",
-      "target": "src\\components\\ProtectedRoute.tsx",
+      "id": "src/screens/Auth/AuthCallback.tsx:20:6-to-src/screens/Auth/Auth.tsx",
+      "source": "src/screens/Auth/AuthCallback.tsx",
+      "target": "src/screens/Auth/Auth.tsx",
       "data": {
-        "viaRoute": "/chat",
+        "viaRoute": "/auth",
         "trigger": {
-          "element": "navigate('/chat')",
-          "line": 18,
-          "endLine": 18,
+          "element": "navigate('/auth', { \n        replace: true,\n        state: { error: decodeURIComponent(error) }\n      })",
+          "line": 20,
+          "endLine": 23,
           "column": 6,
-          "endColumn": 23,
-          "sourceFile": "src\\screens\\Auth\\Auth.tsx"
+          "endColumn": 8,
+          "sourceFile": "src/screens/Auth/AuthCallback.tsx"
         }
       }
     },
     {
-      "id": "src\\components\\ProtectedRoute.tsx:132:11-to-src\\screens\\Auth\\Auth.tsx",
-      "source": "src\\components\\ProtectedRoute.tsx",
-      "target": "src\\screens\\Auth\\Auth.tsx",
+      "id": "src/screens/Auth/AuthCallback.tsx:26:6-to-src/screens/Auth/Auth.tsx",
+      "source": "src/screens/Auth/AuthCallback.tsx",
+      "target": "src/screens/Auth/Auth.tsx",
+      "data": {
+        "viaRoute": "/auth",
+        "trigger": {
+          "element": "navigate('/auth', { replace: true })",
+          "line": 26,
+          "endLine": 26,
+          "column": 6,
+          "endColumn": 42,
+          "sourceFile": "src/screens/Auth/AuthCallback.tsx"
+        }
+      }
+    },
+    {
+      "id": "src/components/ProtectedRoute.tsx:133:11-to-src/screens/Auth/Auth.tsx",
+      "source": "src/components/ProtectedRoute.tsx",
+      "target": "src/screens/Auth/Auth.tsx",
       "data": {
         "viaRoute": "/auth",
         "trigger": {
           "element": "<Navigate to=\"/auth\" state={{ from: location }} replace />",
-          "line": 132,
-          "endLine": 132,
+          "line": 133,
+          "endLine": 133,
           "column": 11,
           "endColumn": 69,
-          "sourceFile": "src\\components\\ProtectedRoute.tsx"
+          "sourceFile": "src/components/ProtectedRoute.tsx"
         }
       }
     }
