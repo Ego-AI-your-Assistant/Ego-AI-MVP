@@ -11,6 +11,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Create .env file for Docker Compose
+        run: |
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "PGADMIN_DEFAULT_EMAIL=${{ secrets.PG_EMAIL }}" >> .env
+          echo "PGADMIN_DEFAULT_PASSWORD=${{ secrets.PG_PASSWORD }}" >> .env
       - name: Install Docker Compose
         run: |
           sudo apt-get update
