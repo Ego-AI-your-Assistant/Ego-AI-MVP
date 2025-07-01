@@ -11,111 +11,108 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Create root .env file
+      - name: Cache Python deps
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements*.txt') }}
+
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Generate .env files
         run: |
-          touch .env
-          cat <<EOF > .env
+          # Root .env
+          cat > .env <<EOF
           DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_NAME=${{ secrets.DB_NAME }}
-
           PGADMIN_DEFAULT_EMAIL=${{ secrets.PG_EMAIL }}
           PGADMIN_DEFAULT_PASSWORD=${{ secrets.PG_PASSWORD }}
-
           POSTGRES_USER=${{ secrets.DB_USER }}
           POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
           POSTGRES_DB=${{ secrets.DB_NAME }}
-
           MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_USERNAME }}
           MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_PASSWORD }}
           MONGO_INITDB_ROOT_DB=${{ secrets.MONGO_DB }}
           EOF
 
-      - name: Create backend/.env file
-        run: |
+          # backend/.env
           mkdir -p backend
-          touch .env
-          cat <<EOF > backend/.env
+          cat > backend/.env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.TOKEN_MINUTES }}
-
           GROQ_API_KEY=${{ secrets.GROQ_API }}
-
           GOOGLE_CLIENT_ID=${{ secrets.CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_API }}
           GOOGLE_REDIRECT_URI=${{ secrets.REDIRECT_URI }}
-
           POSTGRES_SERVER=${{ secrets.DB_SERVER }}
           POSTGRES_USER=${{ secrets.DB_USER }}
           POSTGRES_PORT=${{ secrets.DB_PORT }}
           POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
           POSTGRES_DATABASE=${{ secrets.DB_NAME }}
-
           DATABASE_URL=${{ secrets.DB_URL }}
-
           ML_SERVICE_URL=${{ secrets.ML_URL }}
-
           FRONTEND_URL=${{ secrets.FRONT_URL }}
-
           BACKEND_CORS_ORIGINS=${{ secrets.BACK_URLS }}
-
           MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_USERNAME }}
           MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_PASSWORD }}
           MONGO_PORT=${{ secrets.MONGO_PORT }}
           MONGO_URL=${{ secrets.MONGO_DB }}
-
           ENVIRONMENT=${{ secrets.ENV }}
+          EOF
 
-      - name: Create frontend/.env file
-        run: |
+          # frontend/.env
           mkdir -p frontend
-          touch .env
-          cat <<EOF > frontend/.env
-          .VITE_PROTECTED=${{ secrets.VITE_PROTECTION }}
+          cat > frontend/.env <<EOF
+          VITE_PROTECTED=${{ secrets.VITE_PROTECTION }}
           VITE_BACKEND_USE=${{ secrets.VITE_USAGE }}
-
           VITE_BACKEND=${{ secrets.VITE_BACKEND_API_URL }}
           VITE_BACKEND_API_URL=${{ secrets.VITE_BACKEND_API_URL }}
           VITE_API_URL=${{ secrets.VITE_BACKEND_API_URL }}
-
           VITE_ML_API_URL=${{ secrets.VITE_ML_API_URL }}
-
           REACT_APP_GOOGLE_API_KEY=${{ secrets.GOOGLE_API }}
           REACT_APP_GOOGLE_CLIENT_ID=${{ secrets.CLIENT_ID }}
           EOF
 
-      - name: Create ML/.env
-        run: |
-        mkdir -p ML
-        touch .env
-        cat <<EOF > ML/.env
-        GROQ_API_KEY=${{ secrets.GROQ_API }}
-        EOF
-
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
+          # ML/.env
+          mkdir -p ML
+          cat > ML/.env <<EOF
+          GROQ_API_KEY=${{ secrets.GROQ_API }}
+          EOF
 
       - name: Build containers
-        run: docker-compose build
+        run: docker compose build
 
-      - name: Backend Tests
+      - name: Backend Tests & Coverage
         run: |
-           docker-compose run --rm backend \
-             pytest --cov=app \
-                    --cov-report=term-missing \
-                    --cov-fail-under=85
+          docker compose run --rm backend \
+            pytest --cov=app \
+                   --cov-report=term-missing \
+                   --cov-fail-under=85
 
-      - name: Upload coverage report
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           files: backend/htmlcov/
           fail_ci_if_error: true
 
       - name: Frontend Tests
-        run: docker-compose run --rm frontend \
-               npm run test -- --watchAll=false
+        run: docker compose run --rm frontend \
+             npm run test -- --watchAll=false
 
   deploy:
     needs: build-and-test
@@ -130,11 +127,8 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             set -e
-            echo "Pulling latest code"
             cd ~/Ego_AI
             git fetch --all
             git reset --hard origin/main
-
-            echo "Restarting Docker services"
-            docker-compose down
-            docker-compose up -d --build
+            docker compose down
+            docker compose up -d --build
