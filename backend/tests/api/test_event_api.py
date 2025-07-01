@@ -1,39 +1,19 @@
-# tests/api/test_event_api.py
 import pytest
-from fastapi import status
 from datetime import datetime, timedelta
+from fastapi import status
 
 @pytest.mark.asyncio
-async def test_event_crud_lifecycle(client):
-    now = datetime.utcnow().isoformat()
-    later = (datetime.utcnow() + timedelta(hours=1)).isoformat()
-    # CREATE
-    create_res = client.post(
-        "/api/v1/events/", json={
-            "title": "Evt", "description": "Desc", 
-            "start_time": now, "end_time": later
-        }
-    )
-    assert create_res.status_code == status.HTTP_201_CREATED
-    evt = create_res.json()
-    evt_id = evt["id"]
-
-    # LIST
-    list_res = client.get("/api/v1/events/?skip=0&limit=10")
-    assert list_res.status_code == 200
-    assert any(e["id"] == evt_id for e in list_res.json())
-
-    # GET ONE
-    get_res = client.get(f"/api/v1/events/{evt_id}")
-    assert get_res.status_code == 200
-
-    # UPDATE
-    upd_res = client.put(
-        f"/api/v1/events/{evt_id}", json={"description": "NewDesc"}
-    )
-    assert upd_res.status_code == 200
-    assert upd_res.json()["description"] == "NewDesc"
-
-    # DELETE
-    del_res = client.delete(f"/api/v1/events/{evt_id}")
-    assert del_res.status_code == status.HTTP_204_NO_CONTENT
+async def test_event_crud(client):
+    start = datetime.utcnow().isoformat()
+    end = (datetime.utcnow()+timedelta(hours=1)).isoformat()
+    cr = client.post("/api/v1/events/", json={"title":"T","description":"D","start_time":start,"end_time":end})
+    assert cr.status_code==status.HTTP_201_CREATED
+    ev = cr.json(); eid = ev['id']
+    lr = client.get("/api/v1/events/?skip=0&limit=5")
+    assert lr.status_code==200 and any(x['id']==eid for x in lr.json())
+    gr = client.get(f"/api/v1/events/{eid}")
+    assert gr.status_code==200
+    ur = client.put(f"/api/v1/events/{eid}", json={"description":"X"})
+    assert ur.status_code==200 and ur.json()["description"]=="X"
+    dr = client.delete(f"/api/v1/events/{eid}")
+    assert dr.status_code==status.HTTP_204_NO_CONTENT

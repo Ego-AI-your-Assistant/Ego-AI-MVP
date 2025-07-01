@@ -1,4 +1,3 @@
-# tests/api/test_ai_interaction_api.py
 import pytest
 from fastapi import status
 
