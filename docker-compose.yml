@@ -79,7 +79,6 @@ services:
     volumes:
       - mongo_data:/data/db
       - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    environment:
     env_file:
       - .env
     networks:
