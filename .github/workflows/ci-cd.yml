@@ -20,7 +20,17 @@ jobs:
         run: docker-compose build
 
       - name: Backend Tests
-        run: docker-compose run --rm backend pytest
+        run: |
+           docker-compose run --rm backend \
+             pytest --cov=app \
+                    --cov-report=term-missing \
+                    --cov-fail-under=85
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          files: backend/htmlcov/
+          fail_ci_if_error: true
 
       - name: Frontend Tests
         run: docker-compose run --rm frontend \
