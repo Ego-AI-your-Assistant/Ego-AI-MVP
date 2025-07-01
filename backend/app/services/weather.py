@@ -76,3 +76,53 @@ def get_weather_forecast(location: str, date: Optional[str] = None) -> Dict[str,
     response = requests.get(OPEN_METEO_URL, params=params)
     response.raise_for_status()
     return response.json()
+
+def weather_summary(location: str) -> Dict[str, Any]:
+    """
+    Returns a weather summary for the next 3 hours: current weather + short-term forecast.
+    Returns JSON:
+    {
+        "current": { ... },  # как в get_current_weather
+        "forecast": [
+            {
+                "time": "2024-06-15T13:00",
+                "temperature": 22.1,
+                "precipitation": 0.0,
+                "weathercode": 1,
+                "cloudcover": 10,
+                "windspeed": 3.2
+            },
+            ...
+        ]
+    }
+    """
+    lat, lon = parse_location(location)
+    # Получаем текущую погоду
+    current = get_current_weather(location).get("current_weather", {})
+    # Получаем прогноз на ближайшие 3 часа
+    import datetime
+    now = datetime.datetime.utcnow()
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "temperature_2m,precipitation,weathercode,cloudcover,windspeed_10m",
+        "start_date": now.strftime("%Y-%m-%d"),
+        "end_date": now.strftime("%Y-%m-%d")
+    }
+    response = requests.get(OPEN_METEO_URL, params=params)
+    response.raise_for_status()
+    data = response.json()
+    forecast = []
+    times = data.get("hourly", {}).get("time", [])
+    for i, t in enumerate(times):
+        t_dt = datetime.datetime.fromisoformat(t)
+        if now <= t_dt <= now + datetime.timedelta(hours=3):
+            forecast.append({
+                "time": t,
+                "temperature": data["hourly"]["temperature_2m"][i],
+                "precipitation": data["hourly"]["precipitation"][i],
+                "weathercode": data["hourly"]["weathercode"][i],
+                "cloudcover": data["hourly"]["cloudcover"][i],
+                "windspeed": data["hourly"]["windspeed_10m"][i]
+            })
+    return {"current": current, "forecast": forecast}

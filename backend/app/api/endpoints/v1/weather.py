@@ -62,3 +62,30 @@ def get_weather_forecast(
         return weather.get_weather_forecast(location, date)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/weather/summary", summary="Weather summary (current + short-term forecast)", tags=["weather"])
+def get_weather_summary(
+    location: str = Query(..., description="Coordinates 'lat,lon' (e.g. '55.75,37.61')")
+):
+    """
+    Get weather summary: current weather + short-term forecast (next 3 hours).
+    Returns JSON:
+    {
+        "current": { ... },  # as in /weather/current
+        "forecast": [
+            {
+                "time": "2024-06-15T13:00",
+                "temperature": 22.1,
+                "precipitation": 0.0,
+                "weathercode": 1,
+                "cloudcover": 10,
+                "windspeed": 3.2
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        return weather.weather_summary(location)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
