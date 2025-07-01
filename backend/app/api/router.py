@@ -9,6 +9,8 @@ from app.api.endpoints.v1 import (
     calendar,
     llm_chat,
     health,
+    chat,
+    interaction_history
     chats,
     weather,
     geo,
@@ -27,6 +29,7 @@ api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"]
 api_router.include_router(llm_chat.router, prefix="/llm_chat", tags=["llm_chat"])
 api_router.include_router(health.health_router, prefix="/health", tags=["health"])
 api_router.include_router(chats.router, prefix="/chats", tags=["AI chat"])
+api_router.include_router(interaction_history.router, prefix="/interation", tags=["interaction_history"])
 api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
 api_router.include_router(geo.router, prefix="/geo", tags=["geo"])
 api_router.include_router(places.router, prefix="/places", tags=["places"])
