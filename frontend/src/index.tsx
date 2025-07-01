@@ -8,6 +8,7 @@ import { Calendar } from './screens/Calendar/Calendar';
 import { Auth } from './screens/Auth/Auth';
 import { AuthCallback } from './screens/Auth/AuthCallback';
 import { Root_page } from './screens/Root_page/Root_page';
+import { GeoSearch } from './screens/GeoSearch/GeoSearch';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -28,6 +29,13 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <Calendar />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/geo-search" element={
+          <ProtectedRoute>
+            <Layout>
+              <GeoSearch />
             </Layout>
           </ProtectedRoute>
         } />
