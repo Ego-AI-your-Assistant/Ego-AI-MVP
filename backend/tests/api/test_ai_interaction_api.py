@@ -24,7 +24,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from app.database.session import get_db
-from backend.main import app
 from app.database.models import Base
 
 # Use SQLite in-memory for tests
