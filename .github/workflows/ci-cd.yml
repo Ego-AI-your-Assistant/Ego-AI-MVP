@@ -23,6 +23,11 @@ jobs:
         run: |
           mkdir -p backend
           echo "DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" > backend/.env
+
+      - name: Create frontend/.env file
+        run: |
+          mkdir -p frontend
+          touch frontend/.env
       - name: Install Docker Compose
         run: |
           sudo apt-get update
