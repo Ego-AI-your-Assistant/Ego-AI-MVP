@@ -16,13 +16,14 @@ class Settings(BaseSettings):
     ML_SERVICE_URL: str = "http://ego-ai-ml-service:8001/chat"
     
     FRONTEND_URL: str = "http://localhost:3000"
-    BACKEND_CORS_ORIGINS: str = "http://localhost:3000"
+    BACKEND_CORS_ORIGINS: str = "http://egoai.duckdns.org:3000"
     
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
     GOOGLE_REDIRECT_URI: Optional[str] = "http://localhost:8000/api/v1/auth/google/callback"
     
     DATABASE_URL: PostgresDsn
+    MONGO_URL: Optional[str] = None
 
     GROQ_API_KEY: Optional[str] = None
 
@@ -37,10 +38,19 @@ class Settings(BaseSettings):
         else:
             origins = [self.BACKEND_CORS_ORIGINS]
         
-        # REMOVE THIS IN PRODUCTION!
-        if self.ENVIRONMENT == "development" and "null" not in origins:
-            origins.append("null")
-            
+        # Ensure we have the production origins with proper ports
+        production_origins = [
+            "http://egoai.duckdns.org", 
+            "https://egoai.duckdns.org",
+            "http://egoai.duckdns.org:3000", 
+            "https://egoai.duckdns.org:3000",
+            "http://egoai.duckdns.org:8000", 
+            "https://egoai.duckdns.org:8000"
+        ]
+        for origin in production_origins:
+            if origin not in origins:
+                origins.append(origin)
+                
         return origins
 
 

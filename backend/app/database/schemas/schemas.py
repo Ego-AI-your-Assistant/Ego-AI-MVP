@@ -40,6 +40,7 @@ class EventBase(BaseModel):
     end_time: datetime
     all_day: bool = False
     location: Optional[str] = None
+    type: str  # 'focus', 'tasks', 'target', 'other'
 
 class EventCreate(EventBase):
     pass
@@ -51,6 +52,7 @@ class EventUpdate(BaseModel):
     end_time: Optional[datetime] = None
     all_day: Optional[bool] = None
     location: Optional[str] = None
+    type: Optional[str] = None
 
 class Event(EventBase):
     id: UUID4
@@ -134,3 +136,12 @@ class LLM_ChatRequest(BaseModel):
 
 class LLM_ChatResponse(BaseModel):
     response: str
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+class AddMessageRequest(BaseModel):
+    user_id: str
+    role: str
+    content: str
