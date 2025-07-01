@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from app.database.session import get_db
-from backend.main import app
+from main import app
 from app.database.models import Base, User as DBUser
 from app.database.schemas import UserCreate
 from app.services.user import UserService
