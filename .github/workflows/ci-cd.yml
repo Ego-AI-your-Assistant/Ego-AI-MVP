@@ -18,6 +18,11 @@ jobs:
           echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
           echo "PGADMIN_DEFAULT_EMAIL=${{ secrets.PG_EMAIL }}" >> .env
           echo "PGADMIN_DEFAULT_PASSWORD=${{ secrets.PG_PASSWORD }}" >> .env
+
+      - name: Create backend/.env file
+        run: |
+          mkdir -p backend
+          echo "DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" > backend/.env
       - name: Install Docker Compose
         run: |
           sudo apt-get update
