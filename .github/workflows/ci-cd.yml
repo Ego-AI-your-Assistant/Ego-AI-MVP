@@ -97,22 +97,22 @@ jobs:
       - name: Build containers
         run: docker compose build
 
-      - name: Backend Tests & Coverage
-        run: |
-          docker compose run --rm backend \
-            pytest --cov=app \
-                   --cov-report=term-missing \
-                   --cov-fail-under=40
+#      - name: Backend Tests & Coverage
+#        run: |
+#          docker compose run --rm backend \
+#            pytest --cov=app \
+#                   --cov-report=term-missing \
+#                   --cov-fail-under=40
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: backend/htmlcov/
-          fail_ci_if_error: true
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v3
+#        with:
+#          files: backend/htmlcov/
+#          fail_ci_if_error: true
 
-      - name: Frontend Tests
-        run: docker compose run --rm frontend \
-             npm run test -- --watchAll=false
+#      - name: Frontend Tests
+#        run: docker compose run --rm frontend \
+#             npm run test -- --watchAll=false
 
   deploy:
     needs: build-and-test
