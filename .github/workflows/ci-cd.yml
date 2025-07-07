@@ -2,7 +2,7 @@ name: Ego_AI CI/CD Pipeline
 
 on:
   push:
-    branches: [ DevOps ]
+    branches: [ main ]
 
 jobs:
   build-and-test:
@@ -115,7 +115,8 @@ jobs:
 #             npm run test -- --watchAll=false
 
   deploy:
-    if: github.ref == 'refs/heads/DevOps'
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Add server to SSH known_hosts
@@ -134,6 +135,6 @@ jobs:
             set -e
             cd ~/Ego_AI
             git fetch --all
-            git reset --hard origin/DevOps
+            git reset --hard origin/main
             docker compose down
             docker compose up -d --build
