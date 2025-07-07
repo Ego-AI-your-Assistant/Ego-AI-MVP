@@ -122,19 +122,14 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-      - name: Debug SSH
-        run: |
-          ssh -o BatchMode=yes \
-              -o PreferredAuthentications=password \
-              -o PubkeyAuthentication=no \
-              ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-              echo "SSH OK"
-      - name: Deploy to Remote Server via SSH
+      
+      - name: Deploy via SSH key
         uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_IP }}
+          host:     ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key:      ${{ secrets.PRIVATE_KEY }}
+          port:     22
           script: |
             set -e
             cd ~/Ego_AI
