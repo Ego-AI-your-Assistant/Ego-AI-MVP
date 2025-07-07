@@ -2,7 +2,7 @@ name: Ego_AI CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ DevOps ]
 
 jobs:
   build-and-test:
@@ -115,10 +115,16 @@ jobs:
 #             npm run test -- --watchAll=false
 
   deploy:
-    needs: build-and-test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/DevOps'
     runs-on: ubuntu-latest
     steps:
+      - name: Debug SSH
+        run: |
+          ssh -o BatchMode=yes \
+              -o PreferredAuthentications=password \
+              -o PubkeyAuthentication=no \
+              ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+              echo "SSH OK"
       - name: Deploy to Remote Server via SSH
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -129,6 +135,6 @@ jobs:
             set -e
             cd ~/Ego_AI
             git fetch --all
-            git reset --hard origin/main
+            git reset --hard origin/DevOps
             docker compose down
             docker compose up -d --build
