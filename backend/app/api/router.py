@@ -9,8 +9,7 @@ from app.api.endpoints.v1 import (
     calendar,
     llm_chat,
     health,
-    chat,
-    interaction_history
+    interaction_history,
     chats,
     weather,
     geo,
