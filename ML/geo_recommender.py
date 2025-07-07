@@ -2,10 +2,12 @@ import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import uvicorn
 from chat import Chat
 import os
+import re
+import json
 
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -24,43 +26,74 @@ app.add_middleware(
 )
 
 class GeoRecommendationRequest(BaseModel):
+    position: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    description: Optional[str] = None
+    weather: Optional[str] = None
+   
+
+class RecommendationItem(BaseModel):
+    name: str
+    description: str
     latitude: float
     longitude: float
-    city: Optional[str] = None
-    district: Optional[str] = None
-    weather: Optional[str] = None
-    purpose: Optional[str] = None  
+    confidence: float 
 
 
 class GeoRecommendationResponse(BaseModel):
-    suggestion: str
+    recommendations: List[RecommendationItem]
 
 
 def build_geo_prompt(data: GeoRecommendationRequest) -> dict:
     now = datetime.datetime.now()
     day_of_week = now.strftime("%A")
     date_str = now.strftime("%B %d, %Y")
-    location_str = f"{data.city or 'Unknown city'}, {data.district or 'Unknown district'}"
+
+    user_parts = []
+    if data.age:
+        user_parts.append(f"{data.age}-year-old")
+    if data.gender:
+        user_parts.append(data.gender)
+    user_desc = " ".join(user_parts) if user_parts else "anonymous user"
+
+    if data.description:
+        user_desc += f" — {data.description.strip()}"
+
     prompt = (
-        f"You are a friendly and knowledgeable local guide. The user is currently in {location_str} "
-        f"at coordinates {data.latitude:.4f}, {data.longitude:.4f}. "
-        f"Today is {day_of_week}, {date_str}, and the weather is: {data.weather or 'unknown'}. "
-        f"They're looking for things to do related to: {data.purpose or 'general interest'}."
-        f"Suggest 3 interesting places to visit nearby. For each place, include a short description. "
-        f"Consider the weather, the day of the week, and the user's mood or interest."
-        f"Return only the plain text recommendations — no bullet points, no markdown, no headings."
+        f"You are a helpful and knowledgeable local guide.\n"
+        f"The user is currently located at: {data.position or 'Unknown location'}.\n"
+        f"Today is {day_of_week}, {date_str}, and the weather is: {data.weather or 'unknown'}.\n\n"
+        f"The user is a {user_desc}.\n"
+        f"Based on this information, recommend 3 interesting places nearby to visit.\n"
+        f"For each place, return a valid JSON object with the following fields:\n"
+        f"- name: string (the name of the place)\n"
+        f"- description: string (brief description)\n"
+        f"- latitude: float\n"
+        f"- longitude: float\n"
+        f"- confidence: float (0 to 10, how confident you are about this suggestion)\n\n"
+        f"Respond ONLY with a JSON array of 3 objects like this:\n"
+        f"[{{\"name\": \"...\", \"description\": \"...\", \"latitude\": ..., \"longitude\": ..., \"confidence\": ...}}, ...]"
     )
 
     return {"role": "system", "content": prompt}
+
 
 
 @app.post("/recommend", response_model=GeoRecommendationResponse)
 def recommend(req: GeoRecommendationRequest):
     try:
         system_prompt = build_geo_prompt(req)
-        messages = [system_prompt, {"role": "user", "content": "Where would you recommend I go?"}]
-        suggestion = model.chat(messages)
-        return GeoRecommendationResponse(suggestion=suggestion.strip())
+        messages = [system_prompt, {"role": "user", "content": "Please suggest places."}]
+        response = model.chat(messages)
+
+        json_match = re.search(r'(\[\s*{.*}\s*\])', response, re.DOTALL)
+        if not json_match:
+            raise ValueError("No valid JSON found in model response")
+
+        parsed = json.loads(json_match.group(1))
+        return GeoRecommendationResponse(recommendations=parsed)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
