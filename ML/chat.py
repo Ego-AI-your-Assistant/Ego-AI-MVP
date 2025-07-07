@@ -144,22 +144,29 @@ def chat(req: ChatRequest):
         
         system_prompt = build_system_prompt(req.calendar)
         
-        # Строим полный список сообщений с историей
+        # Сжимаем историю, если сообщений >= 50
         messages = [system_prompt]
-        
-        # Добавляем историю чата если есть
-        if req.history:
-            for hist_msg in req.history:
+        history = req.history or []
+        if len(history) >= 50:
+            # Собираем текстовую историю для сжатия
+            history_text = '\n'.join([f"{m.get('role','user')}: {m.get('content','')}" for m in history])
+            compress_prompt = {
+                "role": "system",
+                "content": "Сожми следующую историю чата в 3-6 предложений, сохраняя суть диалога:"
+            }
+            compress_user = {"role": "user", "content": history_text}
+            summary = model.chat([compress_prompt, compress_user])
+            # Заменяем историю на одно сжатое сообщение
+            messages.append({"role": "system", "content": f"История чата (сжата): {summary}"})
+        else:
+            for hist_msg in history:
                 if isinstance(hist_msg, dict) and 'role' in hist_msg and 'content' in hist_msg:
-                    # Убеждаемся что роль корректная для Groq API
                     role = hist_msg['role']
                     if role == 'llm':
-                        role = 'assistant'  # Groq использует 'assistant' вместо 'llm'
+                        role = 'assistant'
                     messages.append({"role": role, "content": hist_msg['content']})
-        
         # Добавляем текущее сообщение пользователя
         messages.append({"role": "user", "content": req.message})
-        
         print(f"Built messages with system prompt + history + current, total messages: {len(messages)}")
         reply = model.chat(messages)
         print(f"Got reply from model: {reply[:50] if reply else 'None'}...")
