@@ -9,6 +9,7 @@ from typing import List, Optional
 import uvicorn
 import tempfile
 
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable not set")
@@ -212,6 +213,6 @@ def voice_chat(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     print(f"Starting ML service with GROQ_API_KEY: {'*' * (len(GROQ_API_KEY) - 4) + GROQ_API_KEY[-4:] if GROQ_API_KEY else 'NOT SET'}")
-    uvicorn.run("ml_calendar_chat_api:app",
+    uvicorn.run("chat:app",
                 host="0.0.0.0", port=8001, reload=True)
     

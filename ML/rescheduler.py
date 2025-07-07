@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import re, json
-from ML.chat import Chat
+from ml.chat import Chat
 import os
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -94,5 +94,5 @@ def reschedule(req: RescheduleRequest):
     
 
 if __name__ == "__main__":
-    uvicorn.run("ml_calendar_chat_api:app",
+    uvicorn.run("chat:app",
                 host="0.0.0.0", port=8002, reload=True)
