@@ -8,7 +8,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import tempfile
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
@@ -16,14 +19,32 @@ if not GROQ_API_KEY:
 
 
 class Chat:
+    """Wrapper for Groq LLM chat API."""
+
     def __init__(self, model_name, api_key):
+        """
+        Initialize the Chat class.
+
+        Args:
+            model_name (str): Name of the LLM model.
+            api_key (str): API key for Groq.
+        """
         self.model = model_name
         self.api_key = api_key
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
 
     def chat(self, messages):
+        """
+        Sends a chat completion request to Groq API.
+
+        Args:
+            messages (list): List of message dicts for the LLM.
+
+        Returns:
+            str: Model's reply.
+        """
         try:
-            print(f"Sending request to Groq API with {len(messages)} messages")
+            logger.info(f"Sending request to Groq API with {len(messages)} messages")
             response = requests.post(
                 self.api_url,
                 headers={
@@ -37,20 +58,20 @@ class Chat:
                 },
                 timeout=30
             )
-            print(f"Response status: {response.status_code}")
+            logger.info(f"Response status: {response.status_code}")
             if not response.ok:
-                print(f"Response content: {response.text}")
+                logger.warning(f"Response content: {response.text}")
             response.raise_for_status()
             result = response.json()
             return result['choices'][0]['message']['content'].strip()
         except requests.exceptions.RequestException as e:
-            print(f"Request error: {e}")
+            logger.error(f"Request error: {e}")
             raise
         except KeyError as e:
-            print(f"Response parsing error: {e}, Response: {response.text if 'response' in locals() else 'No response'}")
+            logger.error(f"Response parsing error: {e}, Response: {response.text if 'response' in locals() else 'No response'}")
             raise
         except Exception as e:
-            print(f"Unexpected error in chat method: {e}")
+            logger.exception("Unexpected error in chat method")
             raise
 
 model = Chat("llama3-70b-8192", GROQ_API_KEY)
@@ -58,45 +79,57 @@ model_voice = whisper.load_model("tiny")
 
 
 def format_event(event):
+    """
+    Formats a calendar event for prompt context.
+
+    Args:
+        event (dict): Event data.
+
+    Returns:
+        str: Formatted event string.
+    """
     try:
-        # Проверяем наличие обязательных полей
         if not isinstance(event, dict):
             return f"- Invalid event format: {event}"
-        
-        # Получаем start_time (может быть в разных форматах)
         start_field = event.get("start") or event.get("start_time")
-        end_field = event.get("end") or event.get("end_time") 
+        end_field = event.get("end") or event.get("end_time")
         summary = event.get("summary") or event.get("title", "Untitled event")
-        
         if not start_field or not end_field:
             return f"- {summary} (incomplete event data)"
-            
-        # Парсим даты
         start = datetime.datetime.fromisoformat(
             start_field.replace("Z", "+00:00")).strftime("%B %d, %Y %I:%M %p")
         end = datetime.datetime.fromisoformat(
             end_field.replace("Z", "+00:00")).strftime("%I:%M %p")
         location = event.get("location", "Unknown location")
-        
         return f"- {summary} from {start} to {end} at {location}"
     except Exception as e:
-        print(f"Error formatting event {event}: {e}")
+        logger.error(f"Error formatting event {event}: {e}")
         summary = event.get("summary") or event.get("title", "Unknown event")
         return f"- {summary} (formatting error)"
 
 
-def build_system_prompt(calendar_data=None):
+def build_system_prompt(calendar_data=None, timezone="UTC"):
+    """
+    Builds a system prompt for the LLM based on the user's calendar.
+
+    Args:
+        calendar_data (list, optional): List of calendar events.
+        timezone (str, optional): User's timezone.
+
+    Returns:
+        dict: System prompt for the LLM.
+    """
     today = datetime.datetime.now().strftime("%B %d, %Y")
     try:
         if calendar_data:
-            print(f"Processing {len(calendar_data)} calendar events")
+            logger.info(f"Processing {len(calendar_data)} calendar events")
             calendar_context = "\n".join(format_event(e) for e in calendar_data if e)
         else:
             calendar_context = "No calendar events available"
     except Exception as e:
-        print(f"Error processing calendar data: {e}")
+        logger.error(f"Error processing calendar data: {e}")
         calendar_context = "Error loading calendar events"
-        
+
     content = (
         "You are a helpful assistant who answers questions about the user's calendar and general productivity tips and also just friend. "
         "Always reply in the same language as the user's message: if the user writes in English, answer in English; if in Russian, answer in Russian. "
@@ -114,12 +147,12 @@ def build_system_prompt(calendar_data=None):
         '    "location": "...",\n'
         '    "type": "..."\n'
         "  }\n"
-        "}\n" 
+        "}\n"
         "If the user does not specify the event type, use 'other work' by default. "
         "For normal answers (not related to calendar editing), reply in plain natural language with no special formatting, no escape characters, and no code or Markdown syntax — just clean human-readable text."
-        "If the user's message is a greeting (like \"Hello\", \"Hi\", \"Привет\", etc.), respond in a friendly and natural way without mentioning the calendar or productivity, unless explicitly asked."
-
+        "If the user's message is a greeting (like \"Hello\", \"Hi\", etc.), respond in a friendly and natural way without mentioning the calendar or productivity, unless explicitly asked."
         "Base your answers on the provided calendar and general knowledge, but do not focus only on the calendar. "
+        f"User's timezone is: {timezone}. All times should be in the user's local time zone unless otherwise specified.\n"
         f"Today: {today}\n"
         f"Here is the user's calendar:\n\n{calendar_context}"
     )
@@ -138,58 +171,73 @@ app.add_middleware(
 
 
 class ChatRequest(BaseModel):
+    """Request model for chat endpoint."""
     message: str
     calendar: Optional[List[dict]] = None
-    history: Optional[List[dict]] = None  # Добавляем поле для истории
+    history: Optional[List[dict]] = None
+    timezone: Optional[str] = "UTC"
 
 
 class ChatResponse(BaseModel):
+    """Response model for chat endpoint."""
     response: str
 
 
 class VoiceResponse(BaseModel):
+    """Response model for voice chat endpoint."""
     transcription: str
     response: str
 
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
+    """
+    Handles chat requests, builds prompt, sends to LLM, and returns the response.
+
+    Args:
+        req (ChatRequest): Incoming chat request.
+
+    Returns:
+        ChatResponse: LLM's reply.
+    """
     try:
-        print(f"Received chat request: {req.message[:50]}...")
+        logger.info(f"Received chat request: {req.message[:50]}...")
         if req.history:
-            print(f"Chat history provided: {len(req.history)} messages")
-        
-        system_prompt = build_system_prompt(req.calendar)
-        
-        # Строим полный список сообщений с историей
+            logger.info(f"Chat history provided: {len(req.history)} messages")
+
+        system_prompt = build_system_prompt(req.calendar, req.timezone)
         messages = [system_prompt]
-        
-        # Добавляем историю чата если есть
+
         if req.history:
             for hist_msg in req.history:
                 if isinstance(hist_msg, dict) and 'role' in hist_msg and 'content' in hist_msg:
-                    # Убеждаемся что роль корректная для Groq API
                     role = hist_msg['role']
                     if role == 'llm':
-                        role = 'assistant'  # Groq использует 'assistant' вместо 'llm'
+                        role = 'assistant'
                     messages.append({"role": role, "content": hist_msg['content']})
-        
-        # Добавляем текущее сообщение пользователя
+
         messages.append({"role": "user", "content": req.message})
-        
-        print(f"Built messages with system prompt + history + current, total messages: {len(messages)}")
+
+        logger.info(f"Built messages with system prompt + history + current, total messages: {len(messages)}")
         reply = model.chat(messages)
-        print(f"Got reply from model: {reply[:50] if reply else 'None'}...")
+        logger.info(f"Got reply from model: {reply[:50] if reply else 'None'}...")
         return ChatResponse(response=reply)
     except Exception as e:
-        print(f"Chat endpoint error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Chat endpoint error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"ML Service Error: {str(e)}")
 
 
 @app.post("/voice", response_model=VoiceResponse)
 def voice_chat(file: UploadFile = File(...)):
+    """
+    Handles voice chat requests: transcribes audio and gets LLM response.
+
+    Args:
+        file (UploadFile): Uploaded audio file.
+
+    Returns:
+        VoiceResponse: Transcription and LLM's reply.
+    """
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
@@ -205,6 +253,7 @@ def voice_chat(file: UploadFile = File(...)):
 
         return VoiceResponse(transcription=text, response=reply)
     except Exception as e:
+        logger.error(f"Voice chat endpoint error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"ML Service Error: {e}")
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -212,7 +261,6 @@ def voice_chat(file: UploadFile = File(...)):
 
 
 if __name__ == "__main__":
-    print(f"Starting ML service with GROQ_API_KEY: {'*' * (len(GROQ_API_KEY) - 4) + GROQ_API_KEY[-4:] if GROQ_API_KEY else 'NOT SET'}")
+    logger.info(f"Starting ML service with GROQ_API_KEY: {'*' * (len(GROQ_API_KEY) - 4) + GROQ_API_KEY[-4:] if GROQ_API_KEY else 'NOT SET'}")
     uvicorn.run("chat:app",
                 host="0.0.0.0", port=8001, reload=True)
-    

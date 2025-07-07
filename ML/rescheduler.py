@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import re, json
-from ml.chat import Chat
+from chat import Chat
 import os
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
