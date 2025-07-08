@@ -169,7 +169,7 @@ export const Chat: React.FC = () => {
       {messages.length === 0 ? (
         <div className="chat-welcome">
           <div className="welcome-text">
-            <h1 className="greeting">HI USERNAME</h1>
+            <h1 className="greeting">HI USER</h1>
             <h2 className="question">WHAT WOULD LIKE TO DISCUSS TODAY?</h2>
           </div>
         </div>
