@@ -22,6 +22,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Link to="" className="nav-link">Dashboard/Analytics</Link> 
           <Link to="" className="nav-link">Recomendations</Link>
           <Link to="/geo-search" className='nav-link'>GEO-ASSISTANT</Link>
+          <Link to="/profile" className="nav-link">Profile</Link>
         </div>
         <button onClick={handleLogout} className="logout-btn">
           Logout
