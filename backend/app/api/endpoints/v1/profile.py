@@ -21,7 +21,10 @@ def create_profile(profile: UserProfileCreate, db: Session = Depends(get_db)):
 
 @router.get("/users/profile", response_model=UserProfile)
 def get_own_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return profile_service.get_profile(db, current_user.id)
+    profile = profile_service.get_profile(db, current_user.id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
 
 @router.put("/users/profile", response_model=UserProfile)
 def update_own_profile(update: UserProfileUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
