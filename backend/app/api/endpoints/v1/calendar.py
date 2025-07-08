@@ -132,7 +132,14 @@ async def interpret_and_create_event(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting response from ML service: {e}")
 
-    return await handle_ml_calendar_intent(ml_response_data, db, current_user)
+    intent_result = await handle_ml_calendar_intent(ml_response_data, db, current_user)
+
+    if intent_result.get("status") in ["added", "deleted", "changed"]:
+        return {"status": intent_result["status"]}
+    elif intent_result.get("status") == "invalid_response":
+        return {"status": "invalid_response", "data": intent_result.get("data")}
+    else:
+        return {"status": "error", "message": "Unexpected response from ML service."}
 
 @router.get("/get_tasks", response_model=List[schemas.Event])
 async def get_tasks(
