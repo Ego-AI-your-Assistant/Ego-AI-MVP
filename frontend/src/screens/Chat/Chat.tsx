@@ -95,22 +95,22 @@ export const Chat: React.FC = () => {
       }
 
       let displayMessage;
-      if (parsedResponse) {
-        switch (parsedResponse.status) {
-          case 'added':
+      if (parsedResponse?.intent && parsedResponse?.event) {
+        switch (parsedResponse.intent) {
+          case 'add':
             displayMessage = 'Task successfully added to the calendar!';
             break;
-          case 'deleted':
+          case 'delete':
             displayMessage = 'Task successfully deleted from the calendar!';
             break;
-          case 'changed':
+          case 'update':
             displayMessage = 'Task successfully updated in the calendar!';
             break;
           default:
-            displayMessage = parsedResponse.data ?? 'Invalid response from ML service.';
+            displayMessage = 'Invalid intent received from ML service.';
         }
       } else {
-        displayMessage = llmResponse;
+        displayMessage = parsedResponse?.data ?? llmResponse;
       }
 
       setMessages((prev) => [
