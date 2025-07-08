@@ -5,9 +5,14 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import re, json
-from ML.chat import Chat
+from ml.chat import Chat
+import os
 
-model = Chat("llama3-70b-8192", "key")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY environment variable not set")
+
+model = Chat("llama3-70b-8192", GROQ_API_KEY)
 
 app = FastAPI(title="ML Calendar Rescheduler API")
 
@@ -44,10 +49,25 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
         "You are an expert time-management assistant. "
         "Analyze the user's calendar and suggest a slightly more convenient or balanced schedule. "
         "Do not focus only on maximum productivity. "
-        "All events from the original calendar must be preserved (you may only change their order or time, but do not remove or add events). "
-        "Give a short summary of your suggestion (1-2 sentences). "
-        "In your summary, clearly specify what exactly was changed (for example, which events were moved or swapped). "
-        "Then, return the new optimized calendar as a JSON array of events with fields: summary, start, end, location. "
+        "All events from the original calendar must be preserved — you may only change their order or time, but do not remove or add events. "
+        "Give a short summary of your suggestion (1–2 sentences). "
+        "In your summary, clearly specify what exactly was changed (e.g., which events were moved or swapped). "
+        "Then return the new optimized calendar as a JSON array of events, using the following format:\n\n"
+        "[\n"
+        "  {\n"
+        "    \"event\": {\n"
+        "      \"title\": \"Event title\",\n"
+        "      \"description\": \"Short description\",\n"
+        "      \"start_time\": \"YYYY-MM-DDTHH:MM\",\n"
+        "      \"end_time\": \"YYYY-MM-DDTHH:MM\",\n"
+        "      \"all_day\": true or false,\n"
+        "      \"location\": \"Event location\",\n"
+        "      \"type\": \"meeting | call | personal | focus time | other work\"\n"
+        "    }\n"
+        "  },\n"
+        "  ...\n"
+        "]\n\n"
+        "Only return the JSON — do not include anything else after it.\n"
         f"Today: {today}\n"
         f"User's calendar:\n\n{calendar_context}"
     )
@@ -74,5 +94,5 @@ def reschedule(req: RescheduleRequest):
     
 
 if __name__ == "__main__":
-    uvicorn.run("ml_calendar_chat_api:app",
+    uvicorn.run("chat:app",
                 host="0.0.0.0", port=8002, reload=True)

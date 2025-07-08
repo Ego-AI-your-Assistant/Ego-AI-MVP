@@ -8,6 +8,9 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 from fastapi.encoders import jsonable_encoder
+import re
+import json
+from fastapi import status
 
 from app.database.session import get_db
 from app.database import models, schemas
@@ -45,7 +48,6 @@ async def interpret_and_create_event(
     )
     events = result.fetchall()
     calendar = [serialize_event(e) for e in [row for row in events]]
-    print("calendar to send:", calendar)
     payload = {
         "message": request.text,
         "calendar": calendar
@@ -64,7 +66,46 @@ async def interpret_and_create_event(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting response from ML service: {e}")
 
-    return ml_response_data
+   
+    content = ml_response_data.get("response", "")
+    intent_data = None
+    match = re.search(r'\{.*"intent".*?\}', content, re.DOTALL)
+    if match:
+        try:
+            intent_data = json.loads(match.group(0))
+        except Exception:
+            intent_data = None
+
+    if intent_data:
+        intent = intent_data.get("intent")
+        event = intent_data.get("event", {})
+        event_service = EventService(db)
+        user_id = uuid.UUID(str(current_user.id))
+
+        if intent == "add":
+          
+            event_in = schemas.EventCreate(**event)
+            created_event = await event_service.create(event_in, user_id)
+            return {"result": "added", "event": created_event}
+        elif intent == "update":
+        
+            event_id = event.get("id")
+            if not event_id:
+                return {"error": "No event id for update"}
+            event_in = schemas.EventUpdate(**event)
+            updated_event = await event_service.update(uuid.UUID(event_id), event_in, current_user)
+            return {"result": "updated", "event": updated_event}
+        elif intent == "delete":
+          
+            event_id = event.get("id")
+            if not event_id:
+                return {"error": "No event id for delete"}
+            await event_service.delete(uuid.UUID(event_id), current_user)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        else:
+            return {"response": content}
+    else:
+        return {"response": content}
 
 @router.get("/get_tasks", response_model=List[schemas.Event])
 async def get_tasks(

@@ -76,7 +76,7 @@ def format_event(event):
             start_field.replace("Z", "+00:00")).strftime("%B %d, %Y %I:%M %p")
         end = datetime.datetime.fromisoformat(
             end_field.replace("Z", "+00:00")).strftime("%I:%M %p")
-        location = event.get("location", "Unknown location") or "Unknown location"
+        location = event.get("location", "Unknown location")
         
         return f"- {summary} from {start} to {end} at {location}"
     except Exception as e:
@@ -98,11 +98,28 @@ def build_system_prompt(calendar_data=None):
         calendar_context = "Error loading calendar events"
         
     content = (
-        "You are a helpful assistant who answers questions about the user's calendar and gives general productivity tips. "
-        "If the user wants to create a calendar event, respond ONLY with a valid JSON object with fields: title, description, start_time, end_time, all_day, location, type. "
-        "Otherwise, answer as usual. "
-        "If user does not setup type use 'other work'"
-        "Only respond based on the provided calendar and general knowledge. "
+        "You are a helpful assistant who answers questions about the user's calendar and general productivity tips and also just friend. "
+        "Always reply in the same language as the user's message: if the user writes in English, answer in English; if in Russian, answer in Russian. "
+        "You may answer any general questions, not only about the calendar. "
+        "If the user asks about their calendar, provide information about upcoming events, free time, and general productivity tips. "
+        "If the user wants to add, delete, or update a calendar event, respond ONLY with a valid JSON object in the following format:\n"
+        "{\n"
+        '  "intent": "add" | "delete" | "update",\n'
+        '  "event": {\n'
+        '    "title": "...",\n'
+        '    "description": "...",\n'
+        '    "start_time": "...",\n'
+        '    "end_time": "...",\n'
+        '    "all_day": true | false,\n'
+        '    "location": "...",\n'
+        '    "type": "..."\n'
+        "  }\n"
+        "}\n" 
+        "If the user does not specify the event type, use 'other work' by default. "
+        "For normal answers (not related to calendar editing), reply in plain natural language with no special formatting, no escape characters, and no code or Markdown syntax — just clean human-readable text."
+        "If the user's message is a greeting (like \"Hello\", \"Hi\", \"Привет\", etc.), respond in a friendly and natural way without mentioning the calendar or productivity, unless explicitly asked."
+
+        "Base your answers on the provided calendar and general knowledge, but do not focus only on the calendar. "
         f"Today: {today}\n"
         f"Here is the user's calendar:\n\n{calendar_context}"
     )
@@ -186,7 +203,7 @@ def voice_chat(file: UploadFile = File(...)):
             tmp.write(file.file.read())
             tmp_path = tmp.name
 
-        result = model_voice.transcribe(tmp_path, language='en', fp16=False)
+        result = model_voice.transcribe(tmp_path, fp16=False)
         text = result["text"].strip()
 
         system_prompt = build_system_prompt()
@@ -203,5 +220,6 @@ def voice_chat(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     print(f"Starting ML service with GROQ_API_KEY: {'*' * (len(GROQ_API_KEY) - 4) + GROQ_API_KEY[-4:] if GROQ_API_KEY else 'NOT SET'}")
-    uvicorn.run("ml_calendar_chat_api:app",
+    uvicorn.run("chat:app",
                 host="0.0.0.0", port=8001, reload=True)
+    
