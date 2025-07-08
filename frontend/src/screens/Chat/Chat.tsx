@@ -3,6 +3,7 @@ import '../../components/Layout.css';
 import './Chat.css';
 import { chatWithML } from '@/utils/mlApi';
 import { saveChatMessage, getCurrentUserId, getChatHistory, deleteChatHistory } from '@/utils/api';
+import { createEvent } from '@/utils/calendarApi';
 
 interface Message {
   sender: 'user' | 'llm';
@@ -98,7 +99,19 @@ export const Chat: React.FC = () => {
       if (parsedResponse?.intent && parsedResponse?.event) {
         switch (parsedResponse.intent) {
           case 'add':
-            displayMessage = 'Task successfully added to the calendar!';
+            try {
+              const addRes = await createEvent(parsedResponse.event);
+              if (addRes.ok) {
+                displayMessage = 'Task successfully added to the calendar!';
+              } else {
+                const err = await addRes.text();
+                console.error('Error adding task to calendar:', err);
+                displayMessage = 'Failed to add task to the calendar.';
+              }
+            } catch (e) {
+              console.error('Error calling createEvent API:', e);
+              displayMessage = 'Failed to add task to the calendar.';
+            }
             break;
           case 'delete':
             displayMessage = 'Task successfully deleted from the calendar!';
