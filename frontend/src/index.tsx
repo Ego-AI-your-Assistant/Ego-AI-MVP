@@ -9,6 +9,7 @@ import { Auth } from './screens/Auth/Auth';
 import { AuthCallback } from './screens/Auth/AuthCallback';
 import { Root_page } from './screens/Root_page/Root_page';
 import { GeoSearch } from './screens/GeoSearch/GeoSearch';
+import { Profile } from './screens/Profile/Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -36,6 +37,13 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <GeoSearch />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Layout>
+              <Profile />
             </Layout>
           </ProtectedRoute>
         } />

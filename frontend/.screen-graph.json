@@ -28,7 +28,8 @@
       "routes": [
         "/chat",
         "/calendar",
-        "/geo-search"
+        "/geo-search",
+        "/profile"
       ]
     }
   ],

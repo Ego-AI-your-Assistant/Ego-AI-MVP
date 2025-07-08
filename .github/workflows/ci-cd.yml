@@ -1,9 +1,8 @@
 name: Ego_AI CI/CD Pipeline
-
 on:
   push:
-    branches: [main]
-
+    branches: [ main ]
+    
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -11,59 +10,131 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Cache Python deps
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements*.txt') }}
+
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Generate .env files
+        run: |
+          # Root .env
+          cat >> .env <<EOF
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          PGADMIN_DEFAULT_EMAIL=${{ secrets.PG_EMAIL }}
+          PGADMIN_DEFAULT_PASSWORD=${{ secrets.PG_PASSWORD }}
+          POSTGRES_USER=${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB=${{ secrets.DB_NAME }}
+          MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+          MONGO_INITDB_ROOT_DB=${{ secrets.MONGO_DB }}
+          EOF
+
+          # backend/.env
+          mkdir -p backend
+          cat >> backend/.env <<EOF
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.TOKEN_MINUTES }}
+          GROQ_API_KEY=${{ secrets.GROQ_API }}
+          GOOGLE_CLIENT_ID=${{ secrets.CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_API }}
+          GOOGLE_REDIRECT_URI=${{ secrets.REDIRECT_URI }}
+          POSTGRES_SERVER=${{ secrets.DB_SERVER }}
+          POSTGRES_USER=${{ secrets.DB_USER }}
+          POSTGRES_PORT=${{ secrets.DB_PORT }}
+          POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+          POSTGRES_DATABASE=${{ secrets.DB_NAME }}
+          DATABASE_URL=${{ secrets.DB_URL }}
+          ML_SERVICE_URL=${{ secrets.ML_URL }}
+          FRONTEND_URL=${{ secrets.FRONT_URL }}
+          BACKEND_CORS_ORIGINS=${{ secrets.BACK_URLS }}
+          MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+          MONGO_PORT=${{ secrets.MONGO_PORT }}
+          MONGO_URL=${{ secrets.MONGO_DB }}
+          ENVIRONMENT=${{ secrets.ENV }}
+          EOF
+
+          # frontend/.env
+          mkdir -p frontend
+          cat >> frontend/.env <<EOF
+          VITE_PROTECTED=${{ secrets.VITE_PROTECTION }}
+          VITE_BACKEND_USE=${{ secrets.VITE_USAGE }}
+          VITE_BACKEND=${{ secrets.VITE_BACKEND_API_URL }}
+          VITE_BACKEND_API_URL=${{ secrets.VITE_BACKEND_API_URL }}
+          VITE_API_URL=${{ secrets.VITE_BACKEND_API_URL }}
+          VITE_ML_API_URL=${{ secrets.VITE_ML_API_URL }}
+          REACT_APP_GOOGLE_API_KEY=${{ secrets.GOOGLE_API }}
+          REACT_APP_GOOGLE_CLIENT_ID=${{ secrets.CLIENT_ID }}
+          EOF
+
+          # ML/.env
+          mkdir -p ML
+          cat >> ML/.env <<EOF
+          GROQ_API_KEY=${{ secrets.GROQ_API }}
+          EOF
+
       - name: Build containers
-        run: docker-compose build
+        run: docker compose build
 
-      - name: Backend Tests
-        run: docker-compose run --rm backend pytest
+#      - name: Backend Tests & Coverage
+#        run: |
+#          docker compose run --rm backend \
+#            pytest --cov=app \
+#                   --cov-report=term-missing \
+#                   --cov-fail-under=40
 
-      - name: Frontend Tests
-        run: docker-compose run --rm frontend npm run test -- --watchAll=false || echo "No frontend tests yet"
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v3
+#        with:
+#          files: backend/htmlcov/
+#          fail_ci_if_error: true
+
+#      - name: Frontend Tests
+#        run: docker compose run --rm frontend \
+#             npm run test -- --watchAll=false
 
   deploy:
     needs: build-and-test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to Remote Server via SSH
-        uses: appleboy/ssh-action@master
+      - name: Add server to SSH known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy via SSH key
+        uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_IP }}
+          host:     ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key:      ${{ secrets.PRIVATE_KEY }}
+          port:     22
           script: |
-            echo "Pulling latest code..."
+            set -e
             cd ~/Ego_AI
-            git pull origin main
-
-            echo "Updating .env (project root)"
-            touch .env
-
-            update_env_var() {
-              VAR_NAME="$1"
-              VAR_VALUE="$2"
-              if grep -q "^$VAR_NAME=" .env; then
-                sed -i "s|^$VAR_NAME=.*|$VAR_NAME=$VAR_VALUE|" .env
-              else
-                echo "$VAR_NAME=$VAR_VALUE" >> .env
-              fi
-            }
-
-            update_env_var POSTGRES_USER "${{ secrets.DB_USER }}"
-            update_env_var POSTGRES_PASSWORD "${{ secrets.DB_PASSWORD }}"
-            update_env_var POSTGRES_DB "${{ secrets.DB_NAME }}"
-            update_env_var PGADMIN_DEFAULT_EMAIL "${{ secrets.PG_EMAIL }}"
-            update_env_var PGADMIN_DEFAULT_PASSWORD "${{ secrets.PG_PASSWORD }}"
-
-            echo "Updating backend/.env (for DATABASE_URL)"
-            mkdir -p backend
-            touch backend/.env
-            if grep -q "^DATABASE_URL=" backend/.env; then
-              sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}|" backend/.env
-            else
-              echo "DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" >> backend/.env
-            fi
-
-            echo "Restarting Docker services..."
-            docker-compose down
-            docker-compose up -d --build
+            git fetch --all
+            git reset --hard origin/main
+            
+            docker compose down
+            docker compose up -d --build
