@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException
-from app.services import geo
+from app.services import geo, weather as weather_service
+import httpx
 
 router = APIRouter()
 
@@ -39,3 +40,44 @@ def reverse_geocode(
         return geo.reverse_geocode(lat, lon)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) 
+
+@router.post("/geo/recommend", summary="Personalized place recommendations", tags=["geo"])
+async def geo_recommend(
+    lat: float = Query(..., description="Latitude"),
+    lon: float = Query(..., description="Longitude"),
+    age: int = Query(None),
+    gender: str = Query(None),
+    goal: str = Query(None, description="User's goal or activity"),
+    description: str = Query(None, description="Additional user description"),
+    weather: str = Query(None, description="Weather description")
+):
+    if not weather:
+        try:
+            w = weather_service.get_current_weather(f"{lat},{lon}")
+            temp = w['current_weather']['temperature']
+            code = w['current_weather']['weathercode']
+            weather = f"{temp}°C, code {code}"
+        except Exception:
+            weather = "unknown"
+
+    desc = description or ""
+    if goal:
+        desc += f" Goal: {goal}."
+
+    position = f"{lat},{lon}"
+
+    payload = {
+        "position": position,
+        "age": age,
+        "gender": gender,
+        "description": desc,
+        "weather": weather
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post("http://localhost:8003/recommend", json=payload, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Geo ML service error: {e}")
