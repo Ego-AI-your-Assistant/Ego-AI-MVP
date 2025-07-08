@@ -41,53 +41,67 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
     from app.services.event import EventService
     import uuid
     event_service = EventService(db)
-    if isinstance(ml_response_data, dict) and "intent" in ml_response_data and "event" in ml_response_data:
-        intent = ml_response_data["intent"]
-        event_data = ml_response_data["event"]
-        user_id = uuid.UUID(str(current_user.id))
+    user_id = uuid.UUID(str(current_user.id))
+
+    def process_event(intent, event_data):
         if intent == "add":
+            return add_event(event_data)
+        elif intent == "delete":
+            return delete_event(event_data)
+        elif intent == "update":
+            return update_event(event_data)
+        return {"status": "unknown_intent"}
+
+    async def add_event(event_data):
+        try:
             from app.database import schemas
             event_in = schemas.EventCreate(**event_data)
-            await event_service.create(event_in, user_id)
-            return {"status": "added"}
-        elif intent == "delete":
-            title = event_data.get("title")
-            start_time = event_data.get("start_time")
-            result = await db.execute(
-                models.Event.__table__.select().where(
-                    (models.Event.user_id == user_id) &
-                    (models.Event.title == title) &
-                    (models.Event.start_time == start_time)
-                )
+            created_event = await event_service.create(event_in, user_id)
+            return {"status": "added", "event": created_event}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    async def delete_event(event_data):
+        title = event_data.get("title")
+        start_time = event_data.get("start_time")
+        result = await db.execute(
+            models.Event.__table__.select().where(
+                (models.Event.user_id == user_id) &
+                (models.Event.title == title) &
+                (models.Event.start_time == start_time)
             )
-            event = result.fetchone()
-            if event:
-                await event_service.delete(event.id, current_user)
-                return {"status": "deleted"}
-            else:
-                return {"status": "not_found"}
-        elif intent == "update":
-            title = event_data.get("title")
-            start_time = event_data.get("start_time")
-            result = await db.execute(
-                models.Event.__table__.select().where(
-                    (models.Event.user_id == user_id) &
-                    (models.Event.title == title) &
-                    (models.Event.start_time == start_time)
-                )
+        )
+        event = result.fetchone()
+        if event:
+            await event_service.delete(event.id, current_user)
+            return {"status": "deleted"}
+        return {"status": "not_found"}
+
+    async def update_event(event_data):
+        title = event_data.get("title")
+        start_time = event_data.get("start_time")
+        result = await db.execute(
+            models.Event.__table__.select().where(
+                (models.Event.user_id == user_id) &
+                (models.Event.title == title) &
+                (models.Event.start_time == start_time)
             )
-            event = result.fetchone()
-            if event:
+        )
+        event = result.fetchone()
+        if event:
+            try:
                 from app.database import schemas
                 event_in = schemas.EventUpdate(**event_data)
-                await event_service.update(event.id, event_in, current_user)
-                return {"status": "changed"}
-            else:
-                return {"status": "not_found"}
-        else:
-            return {"status": "unknown_intent"}
-    else:
-        return ml_response_data
+                updated_event = await event_service.update(event.id, event_in, current_user)
+                return {"status": "changed", "event": updated_event}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+        return {"status": "not_found"}
+
+    if isinstance(ml_response_data, dict) and "intent" in ml_response_data and "event" in ml_response_data:
+        return await process_event(ml_response_data["intent"], ml_response_data["event"])
+
+    return {"status": "invalid_response", "data": ml_response_data}
 
 @router.post("/interpret")
 async def interpret_and_create_event(
@@ -99,7 +113,7 @@ async def interpret_and_create_event(
         models.Event.__table__.select().where(models.Event.user_id == current_user.id)
     )
     events = result.fetchall()
-    calendar = [serialize_event(e) for e in [row for row in events]]
+    calendar = list(map(serialize_event, events))
     payload = {
         "message": request.text,
         "calendar": calendar
