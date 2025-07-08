@@ -1,39 +1,43 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from uuid import UUID
-from app.database.models.models import UserProfile
+from app.database.models.models import UserProfile as UserProfileModel
 from app.database.schemas.schemas import UserProfileCreate, UserProfileUpdate
 from fastapi import HTTPException
 
-def create_profile(db: Session, profile: UserProfileCreate):
-    db_profile = db.query(UserProfile).filter(UserProfile.user_id == profile.user_id).first()
+async def create_profile(db: AsyncSession, profile: UserProfileCreate):
+    result = await db.execute(select(UserProfileModel).filter(UserProfileModel.user_id == profile.user_id))
+    db_profile = result.scalar_one_or_none()
     if db_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user")
-    new_profile = UserProfile(**profile.model_dump())
+    new_profile = UserProfileModel(**profile.model_dump())
     db.add(new_profile)
-    db.commit()
-    db.refresh(new_profile)
+    await db.commit()
+    await db.refresh(new_profile)
     return new_profile
 
-def get_profile(db: Session, user_id: UUID):
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+async def get_profile(db: AsyncSession, user_id: UUID):
+    result = await db.execute(select(UserProfileModel).filter(UserProfileModel.user_id == user_id))
+    profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
 
-def update_profile(db: Session, user_id: UUID, update: UserProfileUpdate):
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+async def update_profile(db: AsyncSession, user_id: UUID, update: UserProfileUpdate):
+    result = await db.execute(select(UserProfileModel).filter(UserProfileModel.user_id == user_id))
+    profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
-    db.commit()
-    db.refresh(profile)
+    await db.commit()
+    await db.refresh(profile)
     return profile
 
 
-def get_profile_with_weather(db: Session, user_id: UUID):
+async def get_profile_with_weather(db: AsyncSession, user_id: UUID):
     from app.services import weather as weather_service
-    profile = get_profile(db, user_id)
+    profile = await get_profile(db, user_id)
     hometown = profile.hometown
     weather = None
     if hometown:
