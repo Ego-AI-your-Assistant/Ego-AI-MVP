@@ -17,10 +17,24 @@ async def create_profile(db: AsyncSession, profile: UserProfileCreate):
     return new_profile
 
 async def get_profile(db: AsyncSession, user_id: UUID):
+    print(f"Fetching profile for user_id: {user_id}")
     result = await db.execute(select(UserProfileModel).filter(UserProfileModel.user_id == user_id))
     profile = result.scalar_one_or_none()
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        # Create a default profile if not found
+        new_profile = UserProfileModel(
+            user_id=user_id,
+            name="",
+            surname="",
+            age="",
+            sex="",
+            description="",
+            hometown=""
+        )
+        db.add(new_profile)
+        await db.commit()
+        await db.refresh(new_profile)
+        return new_profile
     return profile
 
 async def update_profile(db: AsyncSession, user_id: UUID, update: UserProfileUpdate):
