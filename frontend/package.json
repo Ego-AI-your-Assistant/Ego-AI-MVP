@@ -20,6 +20,7 @@
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.1",
         "date-fns": "^2.30.0",
+        "gapi-script": "^1.2.0",
         "googleapis": "^126.0.1",
         "leaflet": "^1.9.4",
         "lucide-react": "^0.453.0",

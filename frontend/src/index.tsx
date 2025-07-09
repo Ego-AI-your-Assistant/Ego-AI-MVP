@@ -11,6 +11,7 @@ import { Root_page } from './screens/Root_page/Root_page';
 import { GeoSearch } from './screens/GeoSearch/GeoSearch';
 import { Profile } from './screens/Profile/Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AiSchedule } from './screens/AiSchedule/AiSchedule';
 
 const App: React.FC = () => {
   return (
@@ -30,6 +31,13 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <Calendar />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/recs" element={
+          <ProtectedRoute>
+            <Layout>
+              <AiSchedule />
             </Layout>
           </ProtectedRoute>
         } />
