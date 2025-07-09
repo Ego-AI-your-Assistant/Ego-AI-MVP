@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Layout.css';
 
@@ -12,6 +12,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleLogout = () => {
     navigate("/reg-page", { replace: true });
   };
+
+  useEffect(() => {
+    const nav = document.querySelector('.nav');
+    const height = nav?.getBoundingClientRect().height || 0;
+    document.documentElement.style.setProperty('--nav-height', `${height}px`);
+  }, []);
   
   return (
     <div className="layout">
