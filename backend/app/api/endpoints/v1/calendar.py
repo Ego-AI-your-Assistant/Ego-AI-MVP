@@ -8,11 +8,15 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 from fastapi.encoders import jsonable_encoder
+import re
+import json
+from fastapi import status
 
 from app.database.session import get_db
 from app.database import models, schemas
 from app.utils.deps import get_current_user
 from app.services.event import EventService
+from app.services.recommend import get_recommendations_for_user
 
 router = APIRouter()
 
@@ -33,19 +37,83 @@ def serialize_event(event):
         "location": event.location or ""
     }
 
+async def handle_ml_calendar_intent(ml_response_data, db, current_user):
+    from app.services.event import EventService
+    import uuid
+    event_service = EventService(db)
+    user_id = uuid.UUID(str(current_user.id))
+
+    def process_event(intent, event_data):
+        if intent == "add":
+            return add_event(event_data)
+        elif intent == "delete":
+            return delete_event(event_data)
+        elif intent == "update":
+            return update_event(event_data)
+        return {"status": "unknown_intent"}
+
+    async def add_event(event_data):
+        try:
+            from app.database import schemas
+            event_in = schemas.EventCreate(**event_data)
+            created_event = await event_service.create(event_in, user_id)
+            return {"status": "added", "event": created_event}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    async def delete_event(event_data):
+        title = event_data.get("title")
+        start_time = event_data.get("start_time")
+        result = await db.execute(
+            models.Event.__table__.select().where(
+                (models.Event.user_id == user_id) &
+                (models.Event.title == title) &
+                (models.Event.start_time == start_time)
+            )
+        )
+        event = result.fetchone()
+        if event:
+            await event_service.delete(event.id, current_user)
+            return {"status": "deleted"}
+        return {"status": "not_found"}
+
+    async def update_event(event_data):
+        title = event_data.get("title")
+        start_time = event_data.get("start_time")
+        result = await db.execute(
+            models.Event.__table__.select().where(
+                (models.Event.user_id == user_id) &
+                (models.Event.title == title) &
+                (models.Event.start_time == start_time)
+            )
+        )
+        event = result.fetchone()
+        if event:
+            try:
+                from app.database import schemas
+                event_in = schemas.EventUpdate(**event_data)
+                updated_event = await event_service.update(event.id, event_in, current_user)
+                return {"status": "changed", "event": updated_event}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+        return {"status": "not_found"}
+
+    if isinstance(ml_response_data, dict) and "intent" in ml_response_data and "event" in ml_response_data:
+        return await process_event(ml_response_data["intent"], ml_response_data["event"])
+
+    return {"status": "invalid_response", "data": ml_response_data}
+
 @router.post("/interpret")
 async def interpret_and_create_event(
     request: CalendarInterpretRequest,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-
     result = await db.execute(
         models.Event.__table__.select().where(models.Event.user_id == current_user.id)
     )
     events = result.fetchall()
-    calendar = [serialize_event(e) for e in [row for row in events]]
-    print("calendar to send:", calendar)
+    calendar = list(map(serialize_event, events))
     payload = {
         "message": request.text,
         "calendar": calendar
@@ -64,7 +132,14 @@ async def interpret_and_create_event(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting response from ML service: {e}")
 
-    return ml_response_data
+    intent_result = await handle_ml_calendar_intent(ml_response_data, db, current_user)
+
+    if intent_result.get("status") in ["added", "deleted", "changed"]:
+        return {"status": intent_result["status"]}
+    elif intent_result.get("status") == "invalid_response":
+        return {"status": "invalid_response", "data": intent_result.get("data")}
+    else:
+        return {"status": "error", "message": "Unexpected response from ML service."}
 
 @router.get("/get_tasks", response_model=List[schemas.Event])
 async def get_tasks(
@@ -119,3 +194,10 @@ async def update_task(
     event_service = EventService(db)
     updated_event = await event_service.update(event_id, event_in, current_user)
     return updated_event
+
+@router.get("/recommend")
+async def recommend(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return await get_recommendations_for_user(db, current_user)

@@ -33,7 +33,7 @@ export const Profile: React.FC = () => {
       const useBackend = import.meta.env.VITE_BACKEND_USE !== 'false';
       
       if (useBackend) {
-        const response = await fetch('/api/v1/users/profile');
+        const response = await fetch('/api/v1/profile/users/profile');
         if (response.ok) {
           const data = await response.json();
           setProfile(data);
@@ -71,7 +71,7 @@ export const Profile: React.FC = () => {
       const useBackend = import.meta.env.VITE_BACKEND_USE !== 'false';
       
       if (useBackend) {
-        const response = await fetch('/api/v1/users/profile', {
+        const response = await fetch('/api/v1/profile/users/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
