@@ -64,6 +64,22 @@ export async function interpretText(text: string) {
       throw new Error(`Failed to interpret text: ${errorText}`);
     }
     
+    // Try to validate the response before returning
+    try {
+      // Clone the response so we can both check it and return it
+      const resClone = res.clone();
+      const data = await resClone.json();
+      console.log("Interpret endpoint response data:", data);
+      
+      // Ensure the response has a valid status
+      if (!data || !data.status) {
+        console.error("Invalid response format from interpret endpoint:", data);
+      }
+    } catch (parseError) {
+      console.error("Error parsing interpret response:", parseError);
+      // We'll continue and let the calling code handle this
+    }
+    
     return res;
   } catch (error) {
     console.error("Error in interpretText:", error);
