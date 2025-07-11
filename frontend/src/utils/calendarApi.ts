@@ -47,17 +47,26 @@ export async function deleteEvent(eventId: string) {
 }
 
 export async function interpretText(text: string) {
-  const res = await fetch(`${API_URL}/api/v1/calendar/interpret`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ text }),
-    credentials: "include",
-  });
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to interpret text: ${errorText}`);
+  try {
+    console.log(`Calling /interpret endpoint with text: ${text}`);
+    const res = await fetch(`${API_URL}/api/v1/calendar/interpret`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ text }),
+      credentials: "include",
+    });
+    
+    console.log(`/interpret response status: ${res.status}`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`/interpret error response: ${errorText}`);
+      throw new Error(`Failed to interpret text: ${errorText}`);
+    }
+    
+    return res;
+  } catch (error) {
+    console.error("Error in interpretText:", error);
+    throw error; // Re-throw the error after logging it
   }
-  
-  return res;
 }

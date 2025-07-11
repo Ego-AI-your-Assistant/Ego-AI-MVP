@@ -87,11 +87,25 @@ export const Chat: React.FC = () => {
       const result = await chatWithML(userMessage.text, chatHistory);
       const llmResponse = result.response ?? 'No response from ML service.';
 
+      // Check if the response is already a JSON object or if it's a JSON string
       let parsedResponse;
+      console.log('Raw ML response:', llmResponse);
       try {
-        parsedResponse = JSON.parse(llmResponse);
+        // Check if the response is already a JSON object or if it's a JSON string
+        if (typeof llmResponse === 'string') {
+          try {
+            parsedResponse = JSON.parse(llmResponse);
+            console.log('Successfully parsed ML response as JSON:', parsedResponse);
+          } catch (e) {
+            console.error('Failed to parse ML response as JSON:', e);
+            parsedResponse = null;
+          }
+        } else {
+          console.log('ML response is already an object:', llmResponse);
+          parsedResponse = llmResponse;
+        }
       } catch (e) {
-        console.error('Failed to parse ML response as JSON:', e);
+        console.error('Unexpected error handling ML response:', e);
         parsedResponse = null;
       }
 
@@ -100,45 +114,74 @@ export const Chat: React.FC = () => {
       try {
         // For calendar-related intents, use the /interpret endpoint
         if (parsedResponse?.intent && parsedResponse?.event) {
-          console.log('Detected calendar intent:', parsedResponse.intent);
-          const interpretRes = await interpretText(inputText);
-          const interpretResult = await interpretRes.json();
-          
-          console.log('Interpret result:', interpretResult);
-          
-          if (interpretResult.status === 'added') {
-            displayMessage = 'Task successfully added to the calendar!';
-          } else if (interpretResult.status === 'deleted') {
-            displayMessage = 'Task successfully deleted from the calendar!';
-          } else if (interpretResult.status === 'changed') {
-            displayMessage = 'Task successfully updated in the calendar!';
-          } else if (interpretResult.status === 'invalid_response') {
-            displayMessage = interpretResult.data ?? 'Invalid response from ML service.';
-          } else {
-            displayMessage = 'Failed to process calendar request.';
+          console.log('Detected calendar intent:', parsedResponse.intent, 'with event:', parsedResponse.event);
+          try {
+            const interpretRes = await interpretText(inputText);
+            const interpretResult = await interpretRes.json();
+            
+            console.log('Interpret result:', interpretResult);
+            
+            if (interpretResult.status === 'added') {
+              displayMessage = 'Task successfully added to the calendar!';
+            } else if (interpretResult.status === 'deleted') {
+              displayMessage = 'Task successfully deleted from the calendar!';
+            } else if (interpretResult.status === 'changed') {
+              displayMessage = 'Task successfully updated in the calendar!';
+            } else if (interpretResult.status === 'invalid_response') {
+              console.log('Invalid response received:', interpretResult.data);
+              displayMessage = typeof interpretResult.data === 'string' ? interpretResult.data : 'Invalid response from ML service.';
+            } else {
+              console.error('Unexpected status from /interpret:', interpretResult);
+              displayMessage = 'Failed to process calendar request.';
+            }
+          } catch (interpretError) {
+            console.error('Error during interpret call:', interpretError);
+            displayMessage = 'Failed to process your calendar request. Please try again.';
           }
         } else {
           // For normal chat responses
           displayMessage = parsedResponse?.data ?? llmResponse;
         }
       } catch (e) {
-        console.error('Error interpreting text:', e);
+        console.error('Error handling parsed response:', e);
         displayMessage = 'Failed to process your request. Please try again.';
       }
 
-      setMessages((prev) => [
-        ...prev,
-        { sender: 'llm', text: displayMessage }
-      ]);
-
-      try {
-        const saveRes = await saveChatMessage(userId, 'llm', displayMessage);
-        if (!saveRes.ok) {
-          const err = await saveRes.text();
-          console.error('Error saving llm message:', err);
+      // Make sure displayMessage is a string
+      if (displayMessage !== null && displayMessage !== undefined) {
+        const messageText = typeof displayMessage === 'string' 
+          ? displayMessage 
+          : JSON.stringify(displayMessage);
+        
+        console.log('Adding message to chat:', messageText);
+        
+        // Safely update the messages state
+        try {
+          setMessages((prev) => [
+            ...prev,
+            { sender: 'llm', text: messageText }
+          ]);
+        } catch (updateError) {
+          console.error('Error updating messages state:', updateError);
         }
-      } catch (e) {
-        console.error('Error calling saveChatMessage (llm):', e);
+
+        // Save message to history
+        try {
+          const saveRes = await saveChatMessage(userId, 'llm', messageText);
+          console.log('Save llm message response status:', saveRes.status);
+          if (!saveRes.ok) {
+            const err = await saveRes.text();
+            console.error('Error saving llm message:', err);
+          }
+        } catch (e) {
+          console.error('Error calling saveChatMessage (llm):', e);
+        }
+      } else {
+        console.error('displayMessage is null or undefined');
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'llm', text: 'Error: Failed to process response.' }
+        ]);
       }
     } catch (error) {
       console.error('Error connecting to ML service:', error);
