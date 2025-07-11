@@ -45,3 +45,19 @@ export async function deleteEvent(eventId: string) {
   if (!res.ok) throw new Error("Failed to delete event");
   return res;
 }
+
+export async function interpretText(text: string) {
+  const res = await fetch(`${API_URL}/api/v1/calendar/interpret`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text }),
+    credentials: "include",
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to interpret text: ${errorText}`);
+  }
+  
+  return res;
+}
