@@ -40,17 +40,11 @@ def serialize_event(event):
 async def handle_ml_calendar_intent(ml_response_data, db, current_user):
     from app.services.event import EventService
     import uuid
+    
+    print(f"handle_ml_calendar_intent received: {ml_response_data}, type: {type(ml_response_data)}")
+    
     event_service = EventService(db)
     user_id = uuid.UUID(str(current_user.id))
-
-    def process_event(intent, event_data):
-        if intent == "add":
-            return add_event(event_data)
-        elif intent == "delete":
-            return delete_event(event_data)
-        elif intent == "update":
-            return update_event(event_data)
-        return {"status": "unknown_intent"}
 
     async def add_event(event_data):
         try:
@@ -98,9 +92,39 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
                 return {"status": "error", "message": str(e)}
         return {"status": "not_found"}
 
+    # Check if it's a dictionary with intent and event
     if isinstance(ml_response_data, dict) and "intent" in ml_response_data and "event" in ml_response_data:
-        return await process_event(ml_response_data["intent"], ml_response_data["event"])
-
+        print(f"Valid calendar intent detected: {ml_response_data['intent']}")
+        if ml_response_data["intent"] == "add":
+            return await add_event(ml_response_data["event"])
+        elif ml_response_data["intent"] == "delete":
+            return await delete_event(ml_response_data["event"])
+        elif ml_response_data["intent"] == "update":
+            return await update_event(ml_response_data["event"])
+        else:
+            return {"status": "unknown_intent", "message": f"Unknown intent: {ml_response_data['intent']}"}
+    
+    # If it's a plain text response
+    if isinstance(ml_response_data, str):
+        print(f"Plain text response received: {ml_response_data}")
+        # Try to parse it as JSON in case it's a stringified JSON
+        try:
+            json_data = json.loads(ml_response_data)
+            if isinstance(json_data, dict) and "intent" in json_data and "event" in json_data:
+                print(f"Found JSON intent in string: {json_data['intent']}")
+                if json_data["intent"] == "add":
+                    return await add_event(json_data["event"])
+                elif json_data["intent"] == "delete":
+                    return await delete_event(json_data["event"])
+                elif json_data["intent"] == "update":
+                    return await update_event(json_data["event"])
+                else:
+                    return {"status": "unknown_intent", "message": f"Unknown intent: {json_data['intent']}"}
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON, normal text response
+            pass
+    
+    print(f"Invalid/non-calendar response: {ml_response_data}")
     return {"status": "invalid_response", "data": ml_response_data}
 
 @router.post("/interpret")
@@ -120,6 +144,7 @@ async def interpret_and_create_event(
     }
     try:
         async with httpx.AsyncClient() as client:
+            print(f"Sending request to ML service: {payload}")
             response = await client.post(
                 ML_SERVICE_URL,
                 json=payload,
@@ -127,12 +152,30 @@ async def interpret_and_create_event(
             )
             response.raise_for_status()
             ml_response_data = response.json()
+            print(f"ML service response: {ml_response_data}")
+            
+            # Check if the response data is from the response field
+            if isinstance(ml_response_data, dict) and "response" in ml_response_data:
+                # Extract the actual response from the ML service wrapper
+                try:
+                    ml_response_string = ml_response_data["response"]
+                    # Try to parse the response as JSON
+                    ml_response_data = json.loads(ml_response_string)
+                    print(f"Parsed ML response as JSON: {ml_response_data}")
+                except (json.JSONDecodeError, TypeError) as e:
+                    print(f"Failed to parse ML response as JSON: {e}")
+                    # If it's not valid JSON, use it as is (plain text)
+                    ml_response_data = ml_response_string
     except httpx.RequestError as e:
+        print(f"Error connecting to ML service: {e}")
         raise HTTPException(status_code=503, detail=f"Could not connect to the ML service: {e}")
     except Exception as e:
+        print(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting response from ML service: {e}")
 
+    print(f"Handling intent with data: {ml_response_data}")
     intent_result = await handle_ml_calendar_intent(ml_response_data, db, current_user)
+    print(f"Intent result: {intent_result}")
 
     if intent_result.get("status") in ["added", "deleted", "changed"]:
         return {"status": intent_result["status"]}
