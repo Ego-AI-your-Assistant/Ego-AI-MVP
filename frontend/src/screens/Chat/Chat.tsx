@@ -3,7 +3,7 @@ import '../../components/Layout.css';
 import './Chat.css';
 import { chatWithML } from '@/utils/mlApi';
 import { saveChatMessage, getCurrentUserId, getChatHistory, deleteChatHistory } from '@/utils/api';
-import { createEvent } from '@/utils/calendarApi';
+import { interpretText } from '@/utils/calendarApi';
 
 interface Message {
   sender: 'user' | 'llm';
@@ -96,34 +96,34 @@ export const Chat: React.FC = () => {
       }
 
       let displayMessage;
-      if (parsedResponse?.intent && parsedResponse?.event) {
-        switch (parsedResponse.intent) {
-          case 'add':
-            try {
-              const addRes = await createEvent(parsedResponse.event);
-              if (addRes.ok) {
-                displayMessage = 'Task successfully added to the calendar!';
-              } else {
-                const err = await addRes.text();
-                console.error('Error adding task to calendar:', err);
-                displayMessage = 'Failed to add task to the calendar.';
-              }
-            } catch (e) {
-              console.error('Error calling createEvent API:', e);
-              displayMessage = 'Failed to add task to the calendar.';
-            }
-            break;
-          case 'delete':
+      
+      try {
+        // For calendar-related intents, use the /interpret endpoint
+        if (parsedResponse?.intent && parsedResponse?.event) {
+          console.log('Detected calendar intent:', parsedResponse.intent);
+          const interpretRes = await interpretText(inputText);
+          const interpretResult = await interpretRes.json();
+          
+          console.log('Interpret result:', interpretResult);
+          
+          if (interpretResult.status === 'added') {
+            displayMessage = 'Task successfully added to the calendar!';
+          } else if (interpretResult.status === 'deleted') {
             displayMessage = 'Task successfully deleted from the calendar!';
-            break;
-          case 'update':
+          } else if (interpretResult.status === 'changed') {
             displayMessage = 'Task successfully updated in the calendar!';
-            break;
-          default:
-            displayMessage = 'Invalid intent received from ML service.';
+          } else if (interpretResult.status === 'invalid_response') {
+            displayMessage = interpretResult.data ?? 'Invalid response from ML service.';
+          } else {
+            displayMessage = 'Failed to process calendar request.';
+          }
+        } else {
+          // For normal chat responses
+          displayMessage = parsedResponse?.data ?? llmResponse;
         }
-      } else {
-        displayMessage = parsedResponse?.data ?? llmResponse;
+      } catch (e) {
+        console.error('Error interpreting text:', e);
+        displayMessage = 'Failed to process your request. Please try again.';
       }
 
       setMessages((prev) => [
