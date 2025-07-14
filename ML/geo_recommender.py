@@ -7,10 +7,7 @@ import uvicorn
 from chat import Chat
 import os
 import re
-<<<<<<< HEAD
 from pydantic import Field
-=======
->>>>>>> 64b7834fc257c8d787521c0d7bb28e9118ab132c
 import json
 
 
@@ -30,20 +27,12 @@ app.add_middleware(
 )
 
 class GeoRecommendationRequest(BaseModel):
-<<<<<<< HEAD
     position: Optional[str] = Field(..., example="43.445,39.956")
     age: Optional[int] = Field(None, example=30)
     gender: Optional[str] = Field(None, example="male")
     description: Optional[str] = Field(None, example="active tourist who loves hiking and history")
     weather: Optional[str] = Field(None, example="sunny")
 
-=======
-    position: Optional[str] = None
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    description: Optional[str] = None
-    weather: Optional[str] = None
->>>>>>> 64b7834fc257c8d787521c0d7bb28e9118ab132c
    
 
 class RecommendationItem(BaseModel):
@@ -51,12 +40,8 @@ class RecommendationItem(BaseModel):
     description: str
     latitude: float
     longitude: float
-<<<<<<< HEAD
     confidence: float = Field(..., ge=0, le=10)
 
-=======
-    confidence: float 
->>>>>>> 64b7834fc257c8d787521c0d7bb28e9118ab132c
 
 
 class GeoRecommendationResponse(BaseModel):
