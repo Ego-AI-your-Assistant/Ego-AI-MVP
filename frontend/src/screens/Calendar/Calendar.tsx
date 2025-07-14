@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday } from 'date-fns';
 import './Calendar.css';
 import { fetchEvents, createEvent, deleteEvent } from '@/utils/calendarApi';
+import Popup from 'reactjs-popup';
+import 'reactjs-popup/dist/index.css'; // Import default styles
 
 // Types for our calendar events
 interface CalendarEvent {
@@ -118,12 +120,15 @@ export const Calendar: React.FC = () => {
         ? `${taskForm.description}\n\n${systemDescription}`
         : systemDescription;
       const newEvent = {
+        // id: '',
         title: taskForm.title,
         start: dueDateTime.toISOString(),
         end: endDateTime.toISOString(),
         type: taskForm.type,
         description: fullDescription
       };
+      //setEvents([newEvent] as CalendarEvent[]);
+
       await createEvent(newEvent);
       await loadCalendarEvents();
       setTaskForm({
@@ -131,7 +136,6 @@ export const Calendar: React.FC = () => {
         title: '',
         description: ''
       });
-      alert('Task created successfully!');
     } catch (error) {
       alert('Error creating task. Please try again.');
     } finally {
@@ -141,7 +145,6 @@ export const Calendar: React.FC = () => {
 
   // Удаление задачи
   const handleDeleteEvent = async (eventId: string) => {
-    if (!window.confirm('Удалить задачу?')) return;
     setIsLoading(true);
     try {
       await deleteEvent(eventId);
@@ -257,22 +260,53 @@ export const Calendar: React.FC = () => {
                   return (
                     <div key={`${hour}-${dayIndex}`} className="calendar-cell">
                       {eventsInSlot.map(event => (
-                        <div
-                          key={event.id}
-                          className={`task-block ${event.type}`}
-                          style={getTaskBlockStyle(event, hour)}
-                          title={event.title}
-                        >
-                          <span>{event.title}</span>
-                          <button 
-                            className="delete-btn" 
-                            style={{marginLeft: 8, fontSize: 10, background: '#dc3545', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', padding: '0 6px'}} 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
-                            title="Удалить задачу"
+                        <Popup trigger={
+                          <div
+                            key={event.id}
+                            className={`task-block ${event.type}`}
+                            style={getTaskBlockStyle(event, hour)}
+                            title={event.title}
                           >
-                            ✕
-                          </button>
-                        </div>
+                            <span>{event.title}</span>
+                          </div>
+                          } position="right center">
+                            <p style={{
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              display: 'flex',
+                              padding: "2 5"
+                            }}>Task Description</p>
+                            <div style={{
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              display: 'flex',
+                              padding: "2 5"
+                            }}>{event.description}</div>
+                            <div className="">
+                              <button 
+                                className="delete-btn" 
+                                style={{
+                                  padding: "4px", 
+                                  fontSize: 16, 
+                                  background: '#dc3545', 
+                                  color: 'white', 
+                                  border: 'none', 
+                                  borderRadius: 3, 
+                                  cursor: 'pointer',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  display: 'flex',
+                                  width: '100%'
+                                }} 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
+                                title="Remove Task"
+                              >
+                                Remove Task
+                              </button>
+                              
+                            </div>
+                        </Popup>
+
                       ))}
                     </div>
                   );

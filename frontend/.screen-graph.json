@@ -36,25 +36,25 @@
   ],
   "edges": [
     {
-      "id": "src/screens/Auth/AuthCallback.tsx:20:6-to-src/screens/Auth/Auth.tsx",
-      "source": "src/screens/Auth/AuthCallback.tsx",
-      "target": "src/screens/Auth/Auth.tsx",
+      "id": "src\\screens\\Auth\\AuthCallback.tsx:20:6-to-src\\screens\\Auth\\Auth.tsx",
+      "source": "src\\screens\\Auth\\AuthCallback.tsx",
+      "target": "src\\screens\\Auth\\Auth.tsx",
       "data": {
         "viaRoute": "/auth",
         "trigger": {
-          "element": "navigate('/auth', { \n        replace: true,\n        state: { error: decodeURIComponent(error) }\n      })",
+          "element": "navigate('/auth', { \r\n        replace: true,\r\n        state: { error: decodeURIComponent(error) }\r\n      })",
           "line": 20,
           "endLine": 23,
           "column": 6,
           "endColumn": 8,
-          "sourceFile": "src/screens/Auth/AuthCallback.tsx"
+          "sourceFile": "src\\screens\\Auth\\AuthCallback.tsx"
         }
       }
     },
     {
-      "id": "src/screens/Auth/AuthCallback.tsx:26:6-to-src/screens/Auth/Auth.tsx",
-      "source": "src/screens/Auth/AuthCallback.tsx",
-      "target": "src/screens/Auth/Auth.tsx",
+      "id": "src\\screens\\Auth\\AuthCallback.tsx:26:6-to-src\\screens\\Auth\\Auth.tsx",
+      "source": "src\\screens\\Auth\\AuthCallback.tsx",
+      "target": "src\\screens\\Auth\\Auth.tsx",
       "data": {
         "viaRoute": "/auth",
         "trigger": {
@@ -63,14 +63,14 @@
           "endLine": 26,
           "column": 6,
           "endColumn": 42,
-          "sourceFile": "src/screens/Auth/AuthCallback.tsx"
+          "sourceFile": "src\\screens\\Auth\\AuthCallback.tsx"
         }
       }
     },
     {
-      "id": "src/components/ProtectedRoute.tsx:133:11-to-src/screens/Auth/Auth.tsx",
-      "source": "src/components/ProtectedRoute.tsx",
-      "target": "src/screens/Auth/Auth.tsx",
+      "id": "src\\components\\ProtectedRoute.tsx:133:11-to-src\\screens\\Auth\\Auth.tsx",
+      "source": "src\\components\\ProtectedRoute.tsx",
+      "target": "src\\screens\\Auth\\Auth.tsx",
       "data": {
         "viaRoute": "/auth",
         "trigger": {
@@ -79,7 +79,7 @@
           "endLine": 133,
           "column": 11,
           "endColumn": 69,
-          "sourceFile": "src/components/ProtectedRoute.tsx"
+          "sourceFile": "src\\components\\ProtectedRoute.tsx"
         }
       }
     }
