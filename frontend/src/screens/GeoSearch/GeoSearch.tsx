@@ -189,6 +189,7 @@ export const GeoSearch: React.FC = () => {
     }
   };
 
+  /*
   const removeRecommendation = async (id: string) => {
     try {
       const success = await recommendationsApi.removeRecommendation(id);
@@ -204,6 +205,7 @@ export const GeoSearch: React.FC = () => {
     }
     return false;
   };
+*/
 
   // Load recommendations on component mount
   useEffect(() => {
@@ -273,6 +275,7 @@ export const GeoSearch: React.FC = () => {
                             <span>{place.rating}</span>
                           </div>
                         )}
+                        {/*
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -291,6 +294,7 @@ export const GeoSearch: React.FC = () => {
                             />
                           </svg>
                         </button>
+                        */}
                       </div>
                     </div>
                     <p className="recommendation-category">{place.category}</p>
