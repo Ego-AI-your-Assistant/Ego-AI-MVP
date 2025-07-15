@@ -31,6 +31,9 @@ class GeoRecommendationRequest(BaseModel):
     gender: Optional[str] = None
     description: Optional[str] = None
     weather: Optional[str] = None
+    local_time: Optional[str] = None
+    timezone: Optional[str] = None
+    nearby_places: Optional[List[dict]] = None
    
 
 class RecommendationItem(BaseModel):
@@ -60,10 +63,37 @@ def build_geo_prompt(data: GeoRecommendationRequest) -> dict:
     if data.description:
         user_desc += f" — {data.description.strip()}"
 
+    # Добавляем информацию о локальном времени, если есть
+    local_time_str = ""
+    if hasattr(data, "local_time") and data.local_time:
+        local_time_str = f"The user's local time is: {data.local_time}"
+        if hasattr(data, "timezone") and data.timezone:
+            local_time_str += f" ({data.timezone})"
+        local_time_str += ".\n"
+
+    # Добавляем nearby_places, если есть
+    nearby_places_str = ""
+    if hasattr(data, "nearby_places") and data.nearby_places:
+        # Формируем краткий список POI для промпта
+        poi_lines = []
+        for poi in data.nearby_places:
+            name = poi.get("name", "")
+            poi_type = poi.get("type", "")
+            address = poi.get("address", "")
+            lat = poi.get("lat", "")
+            lon = poi.get("lon", "")
+            poi_lines.append(f"- {name} ({poi_type}), {address}, {lat},{lon}")
+        nearby_places_str = (
+            "Here is a list of real places nearby. Choose the best ones for the user from this list only.\n" +
+            "\n".join(poi_lines) + "\n\n"
+        )
+
     prompt = (
         f"You are a helpful and knowledgeable local guide.\n"
         f"The user is currently located at: {data.position or 'Unknown location'}.\n"
-        f"Today is {day_of_week}, {date_str}, and the weather is: {data.weather or 'unknown'}.\n\n"
+        f"Today is {day_of_week}, {date_str}, and the weather is: {data.weather or 'unknown'}.\n"
+        f"{local_time_str}"
+        f"{nearby_places_str}"
         f"The user is a {user_desc}.\n"
         f"Based on this information, recommend 3 interesting places nearby to visit.\n"
         f"For each place, return a valid JSON object with the following fields:\n"

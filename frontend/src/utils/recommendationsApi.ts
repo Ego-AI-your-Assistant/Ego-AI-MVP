@@ -45,17 +45,15 @@ class RecommendationsApi {
 
   async getRecommendations(): Promise<RecommendedPlace[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/places`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result: RecommendationsResponse = await response.json();
-      return result.data || [];
+      const response = await fetch('/recommend', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      return result.recommendations || [];
     } catch (error) {
       console.error('Error fetching recommendations:', error);
-              // Return mock data as fallback
       return this.getMockRecommendations();
     }
   }
