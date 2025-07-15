@@ -53,6 +53,7 @@ async def geo_recommend(
     weather: str = Query(None, description="Weather description")
 ):
     # If weather is not provided, try to get it
+
     if not weather:
         try:
             w = weather_service.get_current_weather(f"{lat},{lon}")
@@ -84,4 +85,5 @@ async def geo_recommend(
             resp.raise_for_status()
             return resp.json()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Geo ML service error: {e}") 
+
+        raise HTTPException(status_code=500, detail=f"Geo ML service error: {e}")
