@@ -131,8 +131,6 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
                 json=payload,
                 timeout=60.0
             )
-            logger.info(f"[RECOMMEND] ML service response status: {response.status}")
-            logger.info(f"[RECOMMEND] ML service response headers: {dict(response.headers)}")
             
             # Log raw response content
             raw_content = response.text
@@ -150,17 +148,63 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
             
             logger.info(f"[RECOMMEND] Final response to frontend: {ml_response}")
             
+            # Transform ML response to match frontend expectations
+            if isinstance(ml_response, dict) and "recommendations" in ml_response:
+                recommendations = ml_response["recommendations"]
+            elif isinstance(ml_response, list):
+                recommendations = ml_response
+            else:
+                recommendations = [ml_response]
+            
+            # Transform each recommendation to match frontend format
+            transformed_recommendations = []
+            timestamp = int(datetime.datetime.now().timestamp())
+            for i, rec in enumerate(recommendations):
+                if isinstance(rec, dict):
+                    # Extract and validate coordinates
+                    try:
+                        lat = float(rec.get("latitude", 0))
+                        lon = float(rec.get("longitude", 0))
+                        
+                        # Validate coordinate ranges
+                        if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+                            logger.warning(f"[RECOMMEND] Invalid coordinates for recommendation {i}: lat={lat}, lon={lon}")
+                            continue
+                            
+                    except (ValueError, TypeError) as e:
+                        logger.error(f"[RECOMMEND] Failed to parse coordinates for recommendation {i}: {e}")
+                        continue
+                    
+                    transformed_rec = {
+                        "id": f"rec_{timestamp}_{i}",  # Unique ID: timestamp + index
+                        "title": rec.get("name", "Unknown Place"),  # ML: name → Frontend: title
+                        "description": rec.get("description", ""),  # ✅ совпадает
+                        "address": f"{lat:.6f}, {lon:.6f}",  # Create address from coordinates with precision
+                        "lat": lat,  # ML: latitude → Frontend: lat
+                        "lon": lon,  # ML: longitude → Frontend: lon
+                        "category": "Recommendation",  # Default category
+                        "rating": float(rec.get("confidence", 5)) / 2,  # Convert confidence (0-10) to rating (0-5)
+                        "createdAt": datetime.datetime.now().isoformat(),
+                        "updatedAt": datetime.datetime.now().isoformat()
+                    }
+                    
+                    logger.info(f"[RECOMMEND] Transformed recommendation {i}: {transformed_rec}")
+                    transformed_recommendations.append(transformed_rec)
+            
+            final_response = {
+                "recommendations": transformed_recommendations
+            }
+            
+            logger.info(f"[RECOMMEND] Transformed response for frontend: {final_response}")
+            
             # Log the actual response that will be sent
             import json
-            response_json = json.dumps(ml_response, ensure_ascii=False)
+            response_json = json.dumps(final_response, ensure_ascii=False)
             logger.info(f"[RECOMMEND] Final response JSON string: {response_json}")
             logger.info(f"[RECOMMEND] Final response content-type: application/json")
             
-    except httpx.HTTPStatusError as e:
-        logger.error(f"[RECOMMEND] ML service HTTP error: {e.response.status_code} - {e.response.text}")
-        raise HTTPException(status_code=500, detail=f"ML service HTTP error: {e.response.status_code}")
     except Exception as e:
         logger.error(f"[RECOMMEND] ML service error: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail=f"ML service error: {e}")
 
-    return ml_response
+    return final_response
