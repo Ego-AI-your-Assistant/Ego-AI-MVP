@@ -19,8 +19,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/geo", geo_app)
-app.mount("/rescheduler", rescheduler_app)
+app.mount("/recommend", geo_app)
+app.mount("/reschedule", rescheduler_app)
 app.mount("/chat", chat_app)
 
 # Теперь запускать только этот файл: uvicorn ml_api:app --host 0.0.0.0 --port 8001 
