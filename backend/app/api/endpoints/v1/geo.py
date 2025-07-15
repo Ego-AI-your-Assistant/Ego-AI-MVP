@@ -83,7 +83,12 @@ async def geo_recommend(
         async with httpx.AsyncClient() as client:
             resp = await client.post("http://localhost:8003/recommend", json=payload, timeout=30)
             resp.raise_for_status()
-            return resp.json()
+            ml_result = resp.json()
+            if isinstance(ml_result, dict) and "recommendations" in ml_result:
+                return {"recommendations": ml_result["recommendations"]}
+            elif isinstance(ml_result, list):
+                return {"recommendations": ml_result}
+            else:
+                return {"recommendations": [ml_result]}
     except Exception as e:
-
         raise HTTPException(status_code=500, detail=f"Geo ML service error: {e}")
