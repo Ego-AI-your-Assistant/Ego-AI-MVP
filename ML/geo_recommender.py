@@ -123,13 +123,44 @@ def recommend(req: GeoRecommendationRequest):
         messages = [system_prompt, {"role": "user", "content": "Please suggest places."}]
         response = model.chat(messages)
         logger.info(f"[ML] LLM raw response: {response}")
+        
+        # Log the raw response before JSON parsing
+        logger.info(f"[ML] Raw LLM response length: {len(response)}")
+        logger.info(f"[ML] Raw LLM response first 200 chars: {response[:200]}")
+        
         json_match = re.search(r'(\[\s*{.*}\s*\])', response, re.DOTALL)
         if not json_match:
             logger.error("[ML] No valid JSON found in model response")
-            raise ValueError("No valid JSON found in model response")
-        parsed = json.loads(json_match.group(1))
+            logger.error(f"[ML] Full response that didn't contain JSON: {response}")
+            raise HTTPException(status_code=500, detail="ML returned invalid JSON. Please try again later.")
+        
+        json_str = json_match.group(1)
+        logger.info(f"[ML] Extracted JSON string: {json_str}")
+        
+        try:
+            parsed = json.loads(json_str)
+            logger.info(f"[ML] Successfully parsed JSON: {parsed}")
+        except Exception as e:
+            logger.error(f"[ML] JSON parse error: {e}")
+            logger.error(f"[ML] JSON string that failed to parse: {json_str}")
+            raise HTTPException(status_code=500, detail="ML returned malformed JSON. Please try again later.")
+        
+        # Validate the parsed structure
+        if not isinstance(parsed, list):
+            logger.error(f"[ML] Parsed result is not a list: {type(parsed)}")
+            raise HTTPException(status_code=500, detail="ML returned invalid structure. Expected list.")
+        
+        logger.info(f"[ML] Parsed recommendations count: {len(parsed)}")
         logger.info(f"[ML] Parsed recommendations: {parsed}")
-        return GeoRecommendationResponse(recommendations=parsed)
+        
+        # Create response object
+        response_obj = GeoRecommendationResponse(recommendations=parsed)
+        logger.info(f"[ML] Final response object: {response_obj.dict()}")
+        
+        return response_obj
+    except HTTPException as e:
+        logger.error(f"[ML] HTTPException raised: {e.detail}")
+        raise e
     except Exception as e:
         logger.error(f"[ML] Error in recommend: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal ML error. Please try again later.")
