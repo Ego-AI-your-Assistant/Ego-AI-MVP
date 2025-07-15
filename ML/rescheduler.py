@@ -3,9 +3,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-import uvicorn
 import re, json
-from ml.chat import Chat
+from chat import Chat
 import os
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -91,8 +90,3 @@ def reschedule(req: RescheduleRequest):
         return RescheduleResponse(suggestion=short_suggestion, new_calendar=new_calendar)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-
-if __name__ == "__main__":
-    uvicorn.run("chat:app",
-                host="0.0.0.0", port=8002, reload=True)
