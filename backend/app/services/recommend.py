@@ -125,6 +125,7 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
 
     try:
         async with httpx.AsyncClient() as client:
+            print("CALLED IN RECOMMEND SERVICE: http://ego-ai-ml-service:8001/recommend")
             response = await client.post(
                 "http://ego-ai-ml-service:8001/recommend",
                 json=payload,
