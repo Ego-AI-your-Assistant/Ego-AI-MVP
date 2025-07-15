@@ -8,6 +8,7 @@ from chat import Chat
 import os
 import re
 import json
+import logging
 
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -109,22 +110,28 @@ def build_geo_prompt(data: GeoRecommendationRequest) -> dict:
     return {"role": "system", "content": prompt}
 
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 @app.post("/recommend", response_model=GeoRecommendationResponse)
 def recommend(req: GeoRecommendationRequest):
     try:
+        logger.info(f"[ML] Incoming payload: {req.dict()}")
         system_prompt = build_geo_prompt(req)
+        logger.info(f"[ML] Built system prompt: {system_prompt}")
         messages = [system_prompt, {"role": "user", "content": "Please suggest places."}]
         response = model.chat(messages)
-
+        logger.info(f"[ML] LLM raw response: {response}")
         json_match = re.search(r'(\[\s*{.*}\s*\])', response, re.DOTALL)
         if not json_match:
+            logger.error("[ML] No valid JSON found in model response")
             raise ValueError("No valid JSON found in model response")
-
         parsed = json.loads(json_match.group(1))
+        logger.info(f"[ML] Parsed recommendations: {parsed}")
         return GeoRecommendationResponse(recommendations=parsed)
-
     except Exception as e:
+        logger.error(f"[ML] Error in recommend: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
