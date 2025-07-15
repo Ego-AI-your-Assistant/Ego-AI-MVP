@@ -41,11 +41,11 @@ export interface ApiError {
 }
 
 class RecommendationsApi {
-  private baseUrl = '/api/v1/recommendations';
+  private baseUrl = '/api/v1/recommend';
 
   async getRecommendations(): Promise<RecommendedPlace[]> {
     try {
-      const response = await fetch('/recommend', {
+      const response = await fetch(`${this.baseUrl}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -58,6 +58,7 @@ class RecommendationsApi {
     }
   }
 
+  /*
   async addRecommendation(place: CreateRecommendationRequest): Promise<RecommendedPlace | null> {
     try {
       const response = await fetch(`${this.baseUrl}/places`, {
@@ -66,6 +67,7 @@ class RecommendationsApi {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(place),
+        credentials: 'include',
       });
       
       if (!response.ok) {
@@ -84,6 +86,7 @@ class RecommendationsApi {
     try {
       const response = await fetch(`${this.baseUrl}/places/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       if (!response.ok) {
@@ -96,6 +99,7 @@ class RecommendationsApi {
       return false;
     }
   }
+*/
 
   async updateRecommendation(id: string, updates: Partial<CreateRecommendationRequest>): Promise<RecommendedPlace | null> {
     try {
@@ -105,6 +109,7 @@ class RecommendationsApi {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updates),
+        credentials: 'include',
       });
       
       if (!response.ok) {
