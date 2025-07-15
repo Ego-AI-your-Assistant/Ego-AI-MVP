@@ -20,6 +20,7 @@ ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001/chat")
 
 class CalendarInterpretRequest(BaseModel):
     text: str
+    location: str  
 
 class ChatRequest(BaseModel):
     message: str
@@ -46,9 +47,25 @@ async def interpret_and_create_event(
     events = result.fetchall()
     calendar = [serialize_event(e) for e in [row for row in events]]
     print("calendar to send:", calendar)
+    user_location = request.location
+    timezone_value = None
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            tz_response = await client.get(f"http://localhost:8000/timezone?location={user_location}")
+            tz_response.raise_for_status()
+            tz_data = tz_response.json()
+            # Получаем текущее UTC время
+            from datetime import datetime, timezone as dt_timezone
+            now_utc = datetime.now(dt_timezone.utc)
+            timezone_value = now_utc.isoformat()
+    except Exception as e:
+        print(f"Не удалось получить временную зону: {e}")
+        timezone_value = None
     payload = {
         "message": request.text,
-        "calendar": calendar
+        "calendar": calendar,
+        "timezone": timezone_value
     }
     try:
         async with httpx.AsyncClient() as client:
