@@ -152,7 +152,7 @@ class VoiceResponse(BaseModel):
     response: str
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/", response_model=ChatResponse)
 def chat(req: ChatRequest):
     try:
         print(f"Received chat request: {req.message[:50]}...")

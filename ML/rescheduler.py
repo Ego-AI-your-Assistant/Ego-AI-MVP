@@ -72,7 +72,7 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
     )
     return {"role": "system", "content": content}
 
-@app.post("/reschedule", response_model=RescheduleResponse)
+@app.post("/", response_model=RescheduleResponse)
 def reschedule(req: RescheduleRequest):
     try:
         system_prompt = build_reschedule_prompt([e.model_dump() for e in req.calendar])
@@ -85,7 +85,6 @@ def reschedule(req: RescheduleRequest):
                 new_calendar = json.loads(json_match.group(1))
             except Exception:
                 new_calendar = None
-
         short_suggestion = suggestion_full.split('\n')[0]
         return RescheduleResponse(suggestion=short_suggestion, new_calendar=new_calendar)
     except Exception as e:

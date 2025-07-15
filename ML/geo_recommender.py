@@ -114,7 +114,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-@app.post("/recommend", response_model=GeoRecommendationResponse)
+@app.post("/", response_model=GeoRecommendationResponse)
 def recommend(req: GeoRecommendationRequest):
     try:
         logger.info(f"[ML] Incoming payload: {req.dict()}")
