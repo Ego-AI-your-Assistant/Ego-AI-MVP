@@ -20,7 +20,7 @@ from app.services.recommend import get_recommendations_for_user
 
 router = APIRouter()
 
-ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001/chat")
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://ego-ai-ml-service:8001/chat")
 
 class CalendarInterpretRequest(BaseModel):
     text: str
