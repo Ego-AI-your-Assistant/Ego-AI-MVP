@@ -133,7 +133,3 @@ def recommend(req: GeoRecommendationRequest):
     except Exception as e:
         logger.error(f"[ML] Error in recommend: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-if __name__ == "__main__":
-    uvicorn.run("geo_recommender:app", host="0.0.0.0", port=8003, reload=True)
