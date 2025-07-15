@@ -45,15 +45,69 @@ class RecommendationsApi {
 
   async getRecommendations(): Promise<RecommendedPlace[]> {
     try {
+      console.log('[FRONTEND] Making request to recommendations API...');
       const response = await fetch(`${this.baseUrl}`, {
         method: 'POST',
         credentials: 'include',
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const result = await response.json();
-      return result.recommendations || [];
+      
+      console.log(`[FRONTEND] Response status: ${response.status}`);
+      console.log(`[FRONTEND] Response headers:`, Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[FRONTEND] HTTP error! status: ${response.status}, body: ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const rawText = await response.text();
+      console.log(`[FRONTEND] Raw response text: ${rawText}`);
+      
+      let result;
+      try {
+        result = JSON.parse(rawText);
+        console.log(`[FRONTEND] Parsed JSON result:`, result);
+      } catch (jsonError) {
+        console.error(`[FRONTEND] Failed to parse response as JSON: ${jsonError}`);
+        console.error(`[FRONTEND] Raw text that failed to parse: ${rawText}`);
+        throw new Error(`Failed to parse response as JSON: ${rawText}`);
+      }
+      
+      const recommendations = result.recommendations || [];
+      console.log(`[FRONTEND] Extracted recommendations:`, recommendations);
+      
+      // Validate recommendations structure
+      const validRecommendations = recommendations.filter((rec: any, index: number) => {
+        const isValid = rec && 
+               typeof rec.id === 'string' && 
+               typeof rec.title === 'string' && 
+               typeof rec.description === 'string' &&
+               typeof rec.address === 'string' &&
+               typeof rec.lat === 'number' && 
+               typeof rec.lon === 'number' &&
+               typeof rec.category === 'string';
+        
+        if (!isValid) {
+          console.warn(`[FRONTEND] Invalid recommendation at index ${index}:`, rec);
+          console.warn(`[FRONTEND] Field types:`, {
+            id: typeof rec?.id,
+            title: typeof rec?.title,
+            description: typeof rec?.description,
+            address: typeof rec?.address,
+            lat: typeof rec?.lat,
+            lon: typeof rec?.lon,
+            category: typeof rec?.category
+          });
+        }
+        
+        return isValid;
+      });
+      
+      console.log(`[FRONTEND] Valid recommendations count: ${validRecommendations.length}`);
+      return validRecommendations;
     } catch (error) {
-      console.error('Error fetching recommendations:', error);
+      console.error('[FRONTEND] Error fetching recommendations:', error);
+      console.log('[FRONTEND] Falling back to mock recommendations');
       return this.getMockRecommendations();
     }
   }
@@ -125,63 +179,68 @@ class RecommendationsApi {
   }
 
   private getMockRecommendations(): RecommendedPlace[] {
-          return [
-        {
-          id: '1',
-          title: 'Red Square',
-          description: 'Main square of Russia, symbol of the country',
-          address: 'Red Square, Moscow, 109012',
-          lat: 55.7539,
-          lon: 37.6208,
-          category: 'Attraction',
-          rating: 4.8,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'Gorky Park',
-          description: 'Central park of culture and recreation',
-          address: 'Krymsky Val St, 9, Moscow, 119049',
-          lat: 55.7312,
-          lon: 37.6014,
-          category: 'Park',
-          rating: 4.5,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          title: 'Tretyakov Gallery',
-          description: 'State gallery of Russian art',
-          address: 'Lavrushinsky Lane, 10, Moscow, 119017',
-          lat: 55.7414,
-          lon: 37.6207,
-          category: 'Museum',
-          rating: 4.7,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '4',
-          title: 'VDNKh',
-          description: 'Exhibition of achievements of national economy',
-          address: 'Mira Ave, 119, Moscow, 129223',
-          lat: 55.8304,
-          lon: 37.6327,
-          category: 'Exhibition Center',
-          rating: 4.6,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '5',
-          title: 'Moscow Kremlin',
-          description: 'Historic fortress in the center of Moscow',
-          address: 'Moscow, 103132',
-          lat: 55.7520,
-          lon: 37.6175,
-          category: 'Attraction',
-          rating: 4.9,
-          createdAt: new Date().toISOString()
-        }
-      ];
+    return [
+      {
+        id: '1',
+        title: 'Red Square',
+        description: 'Main square of Russia, symbol of the country',
+        address: 'Red Square, Moscow, 109012',
+        lat: 55.7539,
+        lon: 37.6208,
+        category: 'Attraction',
+        rating: 4.8,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: '2',
+        title: 'Gorky Park',
+        description: 'Central park of culture and recreation',
+        address: 'Krymsky Val St, 9, Moscow, 119049',
+        lat: 55.7312,
+        lon: 37.6014,
+        category: 'Park',
+        rating: 4.5,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: '3',
+        title: 'Tretyakov Gallery',
+        description: 'State gallery of Russian art',
+        address: 'Lavrushinsky Lane, 10, Moscow, 119017',
+        lat: 55.7414,
+        lon: 37.6207,
+        category: 'Museum',
+        rating: 4.7,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: '4',
+        title: 'VDNKh',
+        description: 'Exhibition of achievements of national economy',
+        address: 'Mira Ave, 119, Moscow, 129223',
+        lat: 55.8304,
+        lon: 37.6327,
+        category: 'Exhibition Center',
+        rating: 4.6,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: '5',
+        title: 'Moscow Kremlin',
+        description: 'Historic fortress in the center of Moscow',
+        address: 'Moscow, 103132',
+        lat: 55.7520,
+        lon: 37.6175,
+        category: 'Attraction',
+        rating: 4.9,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
   }
 
   // Utility methods

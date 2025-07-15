@@ -179,11 +179,14 @@ export const GeoSearch: React.FC = () => {
   const fetchRecommendations = async () => {
     setIsLoadingRecommendations(true);
     try {
+      console.log('[GEO_SEARCH] Fetching recommendations...');
       const data = await recommendationsApi.getRecommendations();
+      console.log('[GEO_SEARCH] Received recommendations:', data);
       setRecommendedPlaces(data);
     } catch (error) {
-      console.error('Error loading recommendations:', error);
+      console.error('[GEO_SEARCH] Error loading recommendations:', error);
       setRecommendedPlaces([]);
+      // Можно добавить уведомление пользователю об ошибке
     } finally {
       setIsLoadingRecommendations(false);
     }
