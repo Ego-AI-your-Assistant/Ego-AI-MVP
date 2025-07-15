@@ -125,17 +125,42 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
 
     try:
         async with httpx.AsyncClient() as client:
-            print("CALLED IN RECOMMEND SERVICE: http://ego-ai-ml-service:8001/recommend")
+            logger.info("[RECOMMEND] Calling ML service at: http://ego-ai-ml-service:8001/recommend/")
             response = await client.post(
                 "http://ego-ai-ml-service:8001/recommend/",
                 json=payload,
                 timeout=60.0
             )
+            logger.info(f"[RECOMMEND] ML service response status: {response.status}")
+            logger.info(f"[RECOMMEND] ML service response headers: {dict(response.headers)}")
+            
+            # Log raw response content
+            raw_content = response.text
+            logger.info(f"[RECOMMEND] ML service raw response: {raw_content}")
+            
             response.raise_for_status()
-            ml_response = response.json()
-            logger.info(f"[recommend] ML response: {ml_response}")
+            
+            try:
+                ml_response = response.json()
+                logger.info(f"[RECOMMEND] ML service parsed JSON: {ml_response}")
+            except Exception as json_error:
+                logger.error(f"[RECOMMEND] Failed to parse ML response as JSON: {json_error}")
+                logger.error(f"[RECOMMEND] Raw response that failed to parse: {raw_content}")
+                raise HTTPException(status_code=500, detail=f"ML service returned invalid JSON: {raw_content}")
+            
+            logger.info(f"[RECOMMEND] Final response to frontend: {ml_response}")
+            
+            # Log the actual response that will be sent
+            import json
+            response_json = json.dumps(ml_response, ensure_ascii=False)
+            logger.info(f"[RECOMMEND] Final response JSON string: {response_json}")
+            logger.info(f"[RECOMMEND] Final response content-type: application/json")
+            
+    except httpx.HTTPStatusError as e:
+        logger.error(f"[RECOMMEND] ML service HTTP error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=500, detail=f"ML service HTTP error: {e.response.status_code}")
     except Exception as e:
-        logger.error(f"[recommend] ML service error: {e}", exc_info=True)
+        logger.error(f"[RECOMMEND] ML service error: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail=f"ML service error: {e}")
 
     return ml_response
