@@ -6,8 +6,11 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY chat.py .
+COPY . .
 
-EXPOSE 8001
+# Make startup script executable
+RUN chmod +x start_services.sh
 
-CMD ["uvicorn", "chat:app", "--host", "0.0.0.0", "--port", "8001"]
+EXPOSE 8001 8002 8003
+
+CMD ["./start_services.sh"]

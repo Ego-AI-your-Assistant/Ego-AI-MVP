@@ -81,7 +81,7 @@ async def geo_recommend(
 
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.post("http://localhost:8003/recommend", json=payload, timeout=30)
+            resp = await client.post("http://ego-ai-ml-service:8003/recommend", json=payload, timeout=30)
             resp.raise_for_status()
             ml_result = resp.json()
             if isinstance(ml_result, dict) and "recommendations" in ml_result:

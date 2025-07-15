@@ -65,7 +65,9 @@ services:
     build: ./ML
     container_name: ego-ai-ml-service
     ports:
-      - "8001:8001"
+      - "8001:8001"  # Chat service
+      - "8002:8002"  # Rescheduler service
+      - "8003:8003"  # Geo recommender service
     env_file:
       - ./ML/.env
     networks:
