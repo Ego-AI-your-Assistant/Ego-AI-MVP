@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, HTTPException
-from app.services import geo, weather as weather_service
+from app.services import geo
 import httpx
+from app.services import weather as weather_service
 
 router = APIRouter()
 
@@ -39,7 +40,7 @@ def reverse_geocode(
     try:
         return geo.reverse_geocode(lat, lon)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) 
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/geo/recommend", summary="Personalized place recommendations", tags=["geo"])
 async def geo_recommend(
@@ -51,6 +52,8 @@ async def geo_recommend(
     description: str = Query(None, description="Additional user description"),
     weather: str = Query(None, description="Weather description")
 ):
+    # If weather is not provided, try to get it
+
     if not weather:
         try:
             w = weather_service.get_current_weather(f"{lat},{lon}")
@@ -60,10 +63,12 @@ async def geo_recommend(
         except Exception:
             weather = "unknown"
 
+    # Compose description
     desc = description or ""
     if goal:
         desc += f" Goal: {goal}."
 
+    # Compose position string
     position = f"{lat},{lon}"
 
     payload = {
@@ -80,4 +85,5 @@ async def geo_recommend(
             resp.raise_for_status()
             return resp.json()
     except Exception as e:
+
         raise HTTPException(status_code=500, detail=f"Geo ML service error: {e}")
