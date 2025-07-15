@@ -41,25 +41,24 @@ export interface ApiError {
 }
 
 class RecommendationsApi {
-  private baseUrl = '/api/v1/recommendations';
+  private baseUrl = '/api/v1/recommend';
 
   async getRecommendations(): Promise<RecommendedPlace[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/places`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result: RecommendationsResponse = await response.json();
-      return result.data || [];
+      const response = await fetch(`${this.baseUrl}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      return result.recommendations || [];
     } catch (error) {
       console.error('Error fetching recommendations:', error);
-              // Return mock data as fallback
       return this.getMockRecommendations();
     }
   }
 
+  /*
   async addRecommendation(place: CreateRecommendationRequest): Promise<RecommendedPlace | null> {
     try {
       const response = await fetch(`${this.baseUrl}/places`, {
@@ -68,6 +67,7 @@ class RecommendationsApi {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(place),
+        credentials: 'include',
       });
       
       if (!response.ok) {
@@ -86,6 +86,7 @@ class RecommendationsApi {
     try {
       const response = await fetch(`${this.baseUrl}/places/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       if (!response.ok) {
@@ -98,6 +99,7 @@ class RecommendationsApi {
       return false;
     }
   }
+*/
 
   async updateRecommendation(id: string, updates: Partial<CreateRecommendationRequest>): Promise<RecommendedPlace | null> {
     try {
@@ -107,6 +109,7 @@ class RecommendationsApi {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updates),
+        credentials: 'include',
       });
       
       if (!response.ok) {

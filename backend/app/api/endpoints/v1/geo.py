@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Query, HTTPException
 from app.services import geo
+import httpx
+from app.services import weather as weather_service
 
 router = APIRouter()
 
@@ -38,4 +40,55 @@ def reverse_geocode(
     try:
         return geo.reverse_geocode(lat, lon)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) 
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/geo/recommend", summary="Personalized place recommendations", tags=["geo"])
+async def geo_recommend(
+    lat: float = Query(..., description="Latitude"),
+    lon: float = Query(..., description="Longitude"),
+    age: int = Query(None),
+    gender: str = Query(None),
+    goal: str = Query(None, description="User's goal or activity"),
+    description: str = Query(None, description="Additional user description"),
+    weather: str = Query(None, description="Weather description")
+):
+    # If weather is not provided, try to get it
+
+    if not weather:
+        try:
+            w = weather_service.get_current_weather(f"{lat},{lon}")
+            temp = w['current_weather']['temperature']
+            code = w['current_weather']['weathercode']
+            weather = f"{temp}°C, code {code}"
+        except Exception:
+            weather = "unknown"
+
+    # Compose description
+    desc = description or ""
+    if goal:
+        desc += f" Goal: {goal}."
+
+    # Compose position string
+    position = f"{lat},{lon}"
+
+    payload = {
+        "position": position,
+        "age": age,
+        "gender": gender,
+        "description": desc,
+        "weather": weather
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post("http://localhost:8003/recommend", json=payload, timeout=30)
+            resp.raise_for_status()
+            ml_result = resp.json()
+            if isinstance(ml_result, dict) and "recommendations" in ml_result:
+                return {"recommendations": ml_result["recommendations"]}
+            elif isinstance(ml_result, list):
+                return {"recommendations": ml_result}
+            else:
+                return {"recommendations": [ml_result]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Geo ML service error: {e}")

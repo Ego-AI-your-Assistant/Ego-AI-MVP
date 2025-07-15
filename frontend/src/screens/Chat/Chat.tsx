@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import '../../components/Layout.css';
 import './Chat.css';
 import { chatWithML } from '@/utils/mlApi';
-import { createEvent } from '@/utils/calendarApi';
 import { saveChatMessage, getCurrentUserId, getChatHistory, deleteChatHistory } from '@/utils/api';
+import { interpretText } from '@/utils/calendarApi';
 
 interface Message {
   sender: 'user' | 'llm';
@@ -44,7 +44,6 @@ export const Chat: React.FC = () => {
         }
       } else {
         console.warn('No user ID available, using mock user ID for testing');
-        // Для тестирования используем фиксированный ID
         setUserId('test-user-123');
       }
     });
@@ -60,22 +59,22 @@ export const Chat: React.FC = () => {
       console.error('User ID is not available');
       return;
     }
-    
+
     const userMessage: Message = { sender: 'user', text: input };
     setMessages((prev) => [...prev, userMessage]);
-    const inputText = input; // Сохраняем перед очисткой
+    const inputText = input;
     setInput('');
-    
+
     console.log('Saving user message to history...');
     try {
       const saveRes = await saveChatMessage(userId, 'user', inputText);
       console.log('Save user message response status:', saveRes.status);
       if (!saveRes.ok) {
         const err = await saveRes.text();
-        console.error('Ошибка сохранения user-сообщения:', err);
+        console.error('Error saving user message:', err);
       }
     } catch (e) {
-      console.error('Ошибка при вызове saveChatMessage (user):', e);
+      console.error('Error calling saveChatMessage (user):', e);
     }
 
     try {
@@ -83,48 +82,122 @@ export const Chat: React.FC = () => {
         ...messages,
         userMessage
       ].map((m) => ({ role: m.sender === 'user' ? 'user' : 'llm', content: m.text }));
-      
+
       console.log('Sending chat history to ML:', chatHistory.length, 'messages');
       const result = await chatWithML(userMessage.text, chatHistory);
-      let llmText = result.response ?? 'No responce for LLM service.';
+      const llmResponse = result.response ?? 'No response from ML service.';
+
+      // Check if the response is already a JSON object or if it's a JSON string
+      let parsedResponse;
+      console.log('Raw ML response:', llmResponse);
       try {
-        const eventCandidate = JSON.parse(llmText);
-        if (eventCandidate && eventCandidate.title && eventCandidate.start_time && eventCandidate.end_time) {
-          const validTypes = ['focus', 'tasks', 'target', 'other'];
-          if (!validTypes.includes(eventCandidate.type)) {
-            eventCandidate.type = 'other';
+        // Check if the response is already a JSON object or if it's a JSON string
+        if (typeof llmResponse === 'string') {
+          try {
+            parsedResponse = JSON.parse(llmResponse);
+            console.log('Successfully parsed ML response as JSON:', parsedResponse);
+          } catch (e) {
+            console.error('Failed to parse ML response as JSON:', e);
+            parsedResponse = null;
           }
-          await createEvent(eventCandidate);
-          llmText = 'Задача успешно добавлена в календарь!';
-        }
-      } catch (e) {}
-      setMessages((prev) => [
-        ...prev,
-        { sender: 'llm', text: llmText }
-      ]);
-      try {
-        const saveRes = await saveChatMessage(userId, 'llm', llmText);
-        if (!saveRes.ok) {
-          const err = await saveRes.text();
-          console.error('Ошибка сохранения llm-сообщения:', err);
+        } else {
+          console.log('ML response is already an object:', llmResponse);
+          parsedResponse = llmResponse;
         }
       } catch (e) {
-        console.error('Ошибка при вызове saveChatMessage (llm):', e);
+        console.error('Unexpected error handling ML response:', e);
+        parsedResponse = null;
+      }
+
+      let displayMessage;
+      
+      try {
+        // For calendar-related intents, use the /interpret endpoint
+        if (parsedResponse?.intent && parsedResponse?.event) {
+          console.log('Detected calendar intent:', parsedResponse.intent, 'with event:', parsedResponse.event);
+          try {
+            const interpretRes = await interpretText(inputText);
+            const interpretResult = await interpretRes.json();
+            
+            console.log('Interpret result:', interpretResult);
+            
+            if (interpretResult.status === 'added') {
+              displayMessage = 'Task successfully added to the calendar!';
+            } else if (interpretResult.status === 'deleted') {
+              displayMessage = 'Task successfully deleted from the calendar!';
+            } else if (interpretResult.status === 'changed') {
+              displayMessage = 'Task successfully updated in the calendar!';
+            } else if (interpretResult.status === 'invalid_response') {
+              console.log('Invalid response received:', interpretResult.data);
+              displayMessage = typeof interpretResult.data === 'string' ? interpretResult.data : 'Invalid response from ML service.';
+            } else {
+              console.error('Unexpected status from /interpret:', interpretResult);
+              displayMessage = 'Failed to process calendar request.';
+            }
+          } catch (interpretError) {
+            console.error('Error during interpret call:', interpretError);
+            displayMessage = 'Failed to process your calendar request. Please try again.';
+          }
+        } else {
+          // For normal chat responses
+          displayMessage = parsedResponse?.data ?? llmResponse;
+        }
+      } catch (e) {
+        console.error('Error handling parsed response:', e);
+        displayMessage = 'Failed to process your request. Please try again.';
+      }
+
+      // Make sure displayMessage is a string
+      if (displayMessage !== null && displayMessage !== undefined) {
+        const messageText = typeof displayMessage === 'string' 
+          ? displayMessage 
+          : JSON.stringify(displayMessage);
+        
+        console.log('Adding message to chat:', messageText);
+        
+        // Safely update the messages state
+        try {
+          setMessages((prev) => [
+            ...prev,
+            { sender: 'llm', text: messageText }
+          ]);
+        } catch (updateError) {
+          console.error('Error updating messages state:', updateError);
+        }
+
+        // Save message to history
+        try {
+          const saveRes = await saveChatMessage(userId, 'llm', messageText);
+          console.log('Save llm message response status:', saveRes.status);
+          if (!saveRes.ok) {
+            const err = await saveRes.text();
+            console.error('Error saving llm message:', err);
+          }
+        } catch (e) {
+          console.error('Error calling saveChatMessage (llm):', e);
+        }
+      } else {
+        console.error('displayMessage is null or undefined');
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'llm', text: 'Error: Failed to process response.' }
+        ]);
       }
     } catch (error) {
       console.error('Error connecting to ML service:', error);
+      const errorMessage = 'Error: Unable to connect to ML service';
       setMessages((prev) => [
         ...prev,
-        { sender: 'llm', text: 'Error not connect to ML service'}
+        { sender: 'llm', text: errorMessage }
       ]);
       try {
-        const saveRes = await saveChatMessage(userId, 'llm', 'Error not connect to ML service');
+        const saveRes = await saveChatMessage(userId, 'llm', errorMessage);
         if (!saveRes.ok) {
           const err = await saveRes.text();
-          console.error('Ошибка сохранения llm-ошибки:', err);
+          console.error('Error saving llm error message:', err);
         }
       } catch (e) {
-        console.error('Ошибка при вызове saveChatMessage (llm-ошибка):', e);
+        console.error('Error calling saveChatMessage (llm error):', e);
       }
     }
   };
@@ -141,15 +214,15 @@ export const Chat: React.FC = () => {
       console.error('User ID is not available');
       return;
     }
-    
+
     if (!window.confirm('Are you sure you want to delete all chat messages? This action cannot be undone.')) {
       return;
     }
-    
+
     try {
       console.log('Deleting chat messages for user:', userId);
       const response = await deleteChatHistory(userId);
-      
+
       if (response.ok) {
         console.log('Chat messages deleted successfully');
         setMessages([]);
@@ -169,7 +242,7 @@ export const Chat: React.FC = () => {
       {messages.length === 0 ? (
         <div className="chat-welcome">
           <div className="welcome-text">
-            <h1 className="greeting">HI USERNAME</h1>
+            <h1 className="greeting">HI USER</h1>
             <h2 className="question">WHAT WOULD LIKE TO DISCUSS TODAY?</h2>
           </div>
         </div>
@@ -177,7 +250,7 @@ export const Chat: React.FC = () => {
         <div className="chat-messages">
           {messages.map((msg, idx) => (
             <div
-              key={idx}
+              key={`${msg.sender}-${idx}`}
               className={`chat-message ${msg.sender === 'user' ? 'user' : 'llm'}`}
             >
               <div className="chat-message-content">

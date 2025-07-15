@@ -9,7 +9,9 @@ import { Auth } from './screens/Auth/Auth';
 import { AuthCallback } from './screens/Auth/AuthCallback';
 import { Root_page } from './screens/Root_page/Root_page';
 import { GeoSearch } from './screens/GeoSearch/GeoSearch';
+import { Profile } from './screens/Profile/Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AiSchedule } from './screens/AiSchedule/AiSchedule';
 
 const App: React.FC = () => {
   return (
@@ -32,10 +34,24 @@ const App: React.FC = () => {
             </Layout>
           </ProtectedRoute>
         } />
+        <Route path="/recs" element={
+          <ProtectedRoute>
+            <Layout>
+              <AiSchedule />
+            </Layout>
+          </ProtectedRoute>
+        } />
         <Route path="/geo-search" element={
           <ProtectedRoute>
             <Layout>
               <GeoSearch />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Layout>
+              <Profile />
             </Layout>
           </ProtectedRoute>
         } />

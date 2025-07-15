@@ -122,6 +122,35 @@ class User_Settings(User_SettingsBase):
         from_attributes = True
 
 
+class UserProfileBase(BaseModel):
+    name: str
+    surname: str
+    age: str
+    sex: str
+    description: Optional[str] = None
+    hometown: str
+
+class UserProfileCreate(UserProfileBase):
+    user_id: UUID4
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    age: Optional[str] = None
+    sex: Optional[str] = None
+    description: Optional[str] = None
+    hometown: Optional[str] = None
+
+class UserProfile(UserProfileBase):
+    id: UUID4
+    user_id: UUID4
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

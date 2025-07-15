@@ -45,3 +45,44 @@ export async function deleteEvent(eventId: string) {
   if (!res.ok) throw new Error("Failed to delete event");
   return res;
 }
+
+export async function interpretText(text: string) {
+  try {
+    console.log(`Calling /interpret endpoint with text: ${text}`);
+    const res = await fetch(`${API_URL}/api/v1/calendar/interpret`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ text }),
+      credentials: "include",
+    });
+    
+    console.log(`/interpret response status: ${res.status}`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`/interpret error response: ${errorText}`);
+      throw new Error(`Failed to interpret text: ${errorText}`);
+    }
+    
+    // Try to validate the response before returning
+    try {
+      // Clone the response so we can both check it and return it
+      const resClone = res.clone();
+      const data = await resClone.json();
+      console.log("Interpret endpoint response data:", data);
+      
+      // Ensure the response has a valid status
+      if (!data || !data.status) {
+        console.error("Invalid response format from interpret endpoint:", data);
+      }
+    } catch (parseError) {
+      console.error("Error parsing interpret response:", parseError);
+      // We'll continue and let the calling code handle this
+    }
+    
+    return res;
+  } catch (error) {
+    console.error("Error in interpretText:", error);
+    throw error; // Re-throw the error after logging it
+  }
+}
