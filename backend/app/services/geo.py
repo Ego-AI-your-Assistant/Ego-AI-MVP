@@ -1,8 +1,13 @@
 import requests
 from typing import Dict, Any
+import os
+import httpx
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
 HEADERS = {"User-Agent": "ego-ai-bot/1.0"}
+
+OPENTRIPMAP_API_KEY = os.getenv("OPENTRIPMAP_API_KEY", "5ae2e3f221c38a28845f05b606e6fed2627f1b0f42f69117f9af9d07")
+OPENTRIPMAP_URL = "https://api.opentripmap.com/0.1/ru/places/radius"
 
 def forward_geocode(city: str) -> Dict[str, Any]:
     """
@@ -48,4 +53,25 @@ def reverse_geocode(lat: str, lon: str) -> Dict[str, Any]:
         "city": data.get("address", {}).get("city") or data.get("address", {}).get("town") or data.get("address", {}).get("village"),
         "country": data.get("address", {}).get("country"),
         "display_name": data.get("display_name")
-    } 
+    }
+
+async def fetch_poi_opentripmap(lat: float, lon: float, radius: int = 1000, limit: int = 20):
+    """
+    Получить POI из OpenTripMap API по координатам.
+    Возвращает список POI (dict).
+    """
+    params = {
+        "radius": radius,
+        "lon": lon,
+        "lat": lat,
+        "apikey": OPENTRIPMAP_API_KEY,
+        "limit": limit,
+        "format": "json"
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(OPENTRIPMAP_URL, params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+# Пример вызова:
+# pois = await fetch_poi_opentripmap(55.75, 37.61) 

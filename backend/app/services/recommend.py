@@ -6,7 +6,7 @@ from app.database.models.models import User, UserProfile
 import httpx
 import datetime
 from app.services import timezone as timezone_service
-from app.services import places as places_service
+from app.services.geo import fetch_poi_opentripmap, forward_geocode
 
 DEFAULT_POSITION = "55.7558,37.6173"  # Москва
 
@@ -25,6 +25,24 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
 
     # Определяем position
     position = profile.hometown or DEFAULT_POSITION
+    print(f"[recommend] User hometown/raw position: {position}")
+
+    # Если position не содержит запятой (т.е. это не координаты, а город), преобразуем в координаты
+    if "," not in position:
+        try:
+            print(f"[recommend] Trying to geocode city name: {position}")
+            geo_data = forward_geocode(position)
+            lat = geo_data["lat"]
+            lon = geo_data["lon"]
+            position = f"{lat},{lon}"
+            print(f"[recommend] Geocoded city '{position}' to coordinates: {lat}, {lon}")
+        except Exception as e:
+            print(f"[recommend] Failed to geocode city '{position}': {e}. Using default Moscow.")
+            position = DEFAULT_POSITION
+            lat, lon = position.split(",")
+    else:
+        lat, lon = position.split(",")
+        print(f"[recommend] Using provided coordinates: {lat}, {lon}")
 
     # Получаем погоду
     try:
@@ -48,25 +66,23 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
         local_time_str = ""
         timezone_name = ""
 
-    # Получаем реальные POI через places.py
+    # Получаем реальные POI через OpenTripMap
     nearby_places = []
     try:
-        lat, lon = position.split(",") if "," in position else (None, None)
         if lat and lon:
-            for poi_type in POI_TYPES:
-                try:
-                    pois = places_service.nearby_places(lat, lon, poi_type)
-                    for poi in pois:
-                        nearby_places.append({
-                            "name": poi.get("name", ""),
-                            "type": poi_type,
-                            "lat": poi.get("lat"),
-                            "lon": poi.get("lon"),
-                            "address": poi.get("address", "")
-                        })
-                except Exception:
-                    continue
-    except Exception:
+            print(f"[recommend] Fetching POI from OpenTripMap for {lat}, {lon}")
+            pois = await fetch_poi_opentripmap(float(lat), float(lon), radius=1000, limit=50)
+            print(f"[recommend] Got {len(pois)} POI from OpenTripMap")
+            for poi in pois:
+                nearby_places.append({
+                    "name": poi.get("name", ""),
+                    "type": poi.get("kinds", ""),
+                    "lat": poi.get("point", {}).get("lat"),
+                    "lon": poi.get("point", {}).get("lon"),
+                    "address": poi.get("address", "")
+                })
+    except Exception as e:
+        print(f"[recommend] Error fetching POI from OpenTripMap: {e}")
         nearby_places = []
 
     payload = {
