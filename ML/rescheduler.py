@@ -3,7 +3,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-import uvicorn
 import re, json
 from chat import Chat
 import os
@@ -73,7 +72,7 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
     )
     return {"role": "system", "content": content}
 
-@app.post("/reschedule", response_model=RescheduleResponse)
+@app.post("/", response_model=RescheduleResponse)
 def reschedule(req: RescheduleRequest):
     try:
         system_prompt = build_reschedule_prompt([e.model_dump() for e in req.calendar])
@@ -86,13 +85,7 @@ def reschedule(req: RescheduleRequest):
                 new_calendar = json.loads(json_match.group(1))
             except Exception:
                 new_calendar = None
-
         short_suggestion = suggestion_full.split('\n')[0]
         return RescheduleResponse(suggestion=short_suggestion, new_calendar=new_calendar)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-
-if __name__ == "__main__":
-    uvicorn.run("chat:app",
-                host="0.0.0.0", port=8002, reload=True)

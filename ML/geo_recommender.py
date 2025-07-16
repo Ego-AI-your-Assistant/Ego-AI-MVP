@@ -9,6 +9,7 @@ import os
 import re
 from pydantic import Field
 import json
+import logging
 
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -27,11 +28,14 @@ app.add_middleware(
 )
 
 class GeoRecommendationRequest(BaseModel):
-    position: Optional[str] = Field(..., example="43.445,39.956")
-    age: Optional[int] = Field(None, example=30)
-    gender: Optional[str] = Field(None, example="male")
-    description: Optional[str] = Field(None, example="active tourist who loves hiking and history")
-    weather: Optional[str] = Field(None, example="sunny")
+    position: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    description: Optional[str] = None
+    weather: Optional[str] = None
+    local_time: Optional[str] = None
+    timezone: Optional[str] = None
+    nearby_places: Optional[List[dict]] = None
 
    
 
@@ -63,43 +67,103 @@ def build_geo_prompt(data: GeoRecommendationRequest) -> dict:
     if data.description:
         user_desc += f" — {data.description.strip()}"
 
+    # Добавляем информацию о локальном времени, если есть
+    local_time_str = ""
+    if hasattr(data, "local_time") and data.local_time:
+        local_time_str = f"The user's local time is: {data.local_time}"
+        if hasattr(data, "timezone") and data.timezone:
+            local_time_str += f" ({data.timezone})"
+        local_time_str += ".\n"
+
+    # Добавляем nearby_places, если есть
+    nearby_places_str = ""
+    if hasattr(data, "nearby_places") and data.nearby_places:
+        # Формируем краткий список POI для промпта
+        poi_lines = []
+        for poi in data.nearby_places:
+            name = poi.get("name", "")
+            poi_type = poi.get("type", "")
+            address = poi.get("address", "")
+            lat = poi.get("lat", "")
+            lon = poi.get("lon", "")
+            poi_lines.append(f"- {name} ({poi_type}), {address}, {lat},{lon}")
+        nearby_places_str = (
+            "Here is a list of real places nearby. Choose the best ones for the user from this list only.\n" +
+            "\n".join(poi_lines) + "\n\n"
+        )
+
     prompt = (
         f"You are a helpful and knowledgeable local guide.\n"
         f"The user is currently located at: {data.position or 'Unknown location'}.\n"
-        f"Today is {day_of_week}, {date_str}, and the weather is: {data.weather or 'unknown'}.\n\n"
+        f"Today is {day_of_week}, {date_str}, and the weather is: {data.weather or 'unknown'}.\n"
+        f"{local_time_str}"
+        f"{nearby_places_str}"
         f"The user is a {user_desc}.\n"
-        f"Based on this information, recommend 3 interesting places nearby to visit.\n"
+        f"Based on this information, recommend 10 interesting places nearby to visit.\n"
         f"For each place, return a valid JSON object with the following fields:\n"
         f"- name: string (the name of the place)\n"
         f"- description: string (brief description)\n"
         f"- latitude: float\n"
         f"- longitude: float\n"
         f"- confidence: float (0 to 10, how confident you are about this suggestion)\n\n"
-        f"Respond ONLY with a JSON array of 3 objects like this:\n"
+        f"Respond ONLY with a JSON array of 10 objects like this:\n"
         f"[{{\"name\": \"...\", \"description\": \"...\", \"latitude\": ..., \"longitude\": ..., \"confidence\": ...}}, ...]"
     )
 
     return {"role": "system", "content": prompt}
 
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-@app.post("/recommend", response_model=GeoRecommendationResponse)
+
+@app.post("/", response_model=GeoRecommendationResponse)
 def recommend(req: GeoRecommendationRequest):
     try:
+        logger.info(f"[ML] Incoming payload: {req.dict()}")
         system_prompt = build_geo_prompt(req)
+        logger.info(f"[ML] Built system prompt: {system_prompt}")
         messages = [system_prompt, {"role": "user", "content": "Please suggest places."}]
         response = model.chat(messages)
-
+        logger.info(f"[ML] LLM raw response: {response}")
+        
+        # Log the raw response before JSON parsing
+        logger.info(f"[ML] Raw LLM response length: {len(response)}")
+        logger.info(f"[ML] Raw LLM response first 200 chars: {response[:200]}")
+        
         json_match = re.search(r'(\[\s*{.*}\s*\])', response, re.DOTALL)
         if not json_match:
-            raise ValueError("No valid JSON found in model response")
-
-        parsed = json.loads(json_match.group(1))
-        return GeoRecommendationResponse(recommendations=parsed)
-
+            logger.error("[ML] No valid JSON found in model response")
+            logger.error(f"[ML] Full response that didn't contain JSON: {response}")
+            raise HTTPException(status_code=500, detail="ML returned invalid JSON. Please try again later.")
+        
+        json_str = json_match.group(1)
+        logger.info(f"[ML] Extracted JSON string: {json_str}")
+        
+        try:
+            parsed = json.loads(json_str)
+            logger.info(f"[ML] Successfully parsed JSON: {parsed}")
+        except Exception as e:
+            logger.error(f"[ML] JSON parse error: {e}")
+            logger.error(f"[ML] JSON string that failed to parse: {json_str}")
+            raise HTTPException(status_code=500, detail="ML returned malformed JSON. Please try again later.")
+        
+        # Validate the parsed structure
+        if not isinstance(parsed, list):
+            logger.error(f"[ML] Parsed result is not a list: {type(parsed)}")
+            raise HTTPException(status_code=500, detail="ML returned invalid structure. Expected list.")
+        
+        logger.info(f"[ML] Parsed recommendations count: {len(parsed)}")
+        logger.info(f"[ML] Parsed recommendations: {parsed}")
+        
+        # Create response object
+        response_obj = GeoRecommendationResponse(recommendations=parsed)
+        logger.info(f"[ML] Final response object: {response_obj.dict()}")
+        
+        return response_obj
+    except HTTPException as e:
+        logger.error(f"[ML] HTTPException raised: {e.detail}")
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-if __name__ == "__main__":
-    uvicorn.run("geo_recommender:app", host="0.0.0.0", port=8003, reload=True)
+        logger.error(f"[ML] Error in recommend: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal ML error. Please try again later.")

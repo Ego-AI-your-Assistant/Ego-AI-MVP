@@ -6,19 +6,19 @@ from sqlalchemy import select
 
 from app.database.session import get_db
 from app.database.models import AI_Interaction, User
-from app.schemas import AI_Interaction as AI_InteractionSchema
+from app.schemas.interaction import AI_InteractionResponse
 from app.utils.deps import get_current_user
 
 router = APIRouter()
 
-@router.get("/", response_model=List[AI_InteractionSchema])
+@router.get("/", response_model=List[AI_InteractionResponse])
 async def get_interaction_history(
     current_user: User = Depends(get_current_user),
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     interaction_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-) -> List[AI_InteractionSchema]:
+) -> List[AI_InteractionResponse]:
     query = select(AI_Interaction).where(AI_Interaction.user_id == current_user.id)
 
     if start_date:

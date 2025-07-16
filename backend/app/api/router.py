@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from app.auth import google
 from app.api.endpoints.v1 import (
     user,
+    profile,
     event,
     reminder,
     ai_interaction,
@@ -9,12 +10,12 @@ from app.api.endpoints.v1 import (
     calendar,
     llm_chat,
     health,
-    chat,
-    interaction_history
+    interaction_history,
     chats,
     weather,
     geo,
-    places
+    places,
+    recommend
 )
 
 api_router = APIRouter()
@@ -33,3 +34,5 @@ api_router.include_router(interaction_history.router, prefix="/interation", tags
 api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
 api_router.include_router(geo.router, prefix="/geo", tags=["geo"])
 api_router.include_router(places.router, prefix="/places", tags=["places"])
+api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
+api_router.include_router(recommend.router, tags=["recommend"])

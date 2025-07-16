@@ -189,7 +189,7 @@ class VoiceResponse(BaseModel):
     response: str
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/", response_model=ChatResponse)
 def chat(req: ChatRequest):
     """
     Handles chat requests, builds prompt, sends to LLM, and returns the response.
@@ -203,13 +203,27 @@ def chat(req: ChatRequest):
     try:
         logger.info(f"Received chat request: {req.message[:50]}...")
         if req.history:
-            logger.info(f"Chat history provided: {len(req.history)} messages")
-
-        system_prompt = build_system_prompt(req.calendar, req.timezone)
+            print(f"Chat history provided: {len(req.history)} messages")
+        
+        system_prompt = build_system_prompt(req.calendar)
+        
+        # Сжимаем историю, если сообщений >= 50
         messages = [system_prompt]
+        history = req.history or []
+        if len(history) >= 50:
+            # Собираем текстовую историю для сжатия
+            history_text = '\n'.join([f"{m.get('role','user')}: {m.get('content','')}" for m in history])
+            compress_prompt = {
+                "role": "system",
+                "content": "Сожми следующую историю чата в 3-6 предложений, сохраняя суть диалога:"
+            }
+            compress_user = {"role": "user", "content": history_text}
+            summary = model.chat([compress_prompt, compress_user])
+            # Заменяем историю на одно сжатое сообщение
+            messages.append({"role": "system", "content": f"История чата (сжата): {summary}"})
+        else:
+            for hist_msg in history:
 
-        if req.history:
-            for hist_msg in req.history:
                 if isinstance(hist_msg, dict) and 'role' in hist_msg and 'content' in hist_msg:
                     role = hist_msg['role']
                     if role == 'llm':

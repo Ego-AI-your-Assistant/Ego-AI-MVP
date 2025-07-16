@@ -179,16 +179,20 @@ export const GeoSearch: React.FC = () => {
   const fetchRecommendations = async () => {
     setIsLoadingRecommendations(true);
     try {
+      console.log('[GEO_SEARCH] Fetching recommendations...');
       const data = await recommendationsApi.getRecommendations();
+      console.log('[GEO_SEARCH] Received recommendations:', data);
       setRecommendedPlaces(data);
     } catch (error) {
-      console.error('Error loading recommendations:', error);
+      console.error('[GEO_SEARCH] Error loading recommendations:', error);
       setRecommendedPlaces([]);
+      // Можно добавить уведомление пользователю об ошибке
     } finally {
       setIsLoadingRecommendations(false);
     }
   };
 
+  /*
   const removeRecommendation = async (id: string) => {
     try {
       const success = await recommendationsApi.removeRecommendation(id);
@@ -204,6 +208,7 @@ export const GeoSearch: React.FC = () => {
     }
     return false;
   };
+*/
 
   // Load recommendations on component mount
   useEffect(() => {
@@ -273,6 +278,7 @@ export const GeoSearch: React.FC = () => {
                             <span>{place.rating}</span>
                           </div>
                         )}
+                        {/*
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -291,6 +297,7 @@ export const GeoSearch: React.FC = () => {
                             />
                           </svg>
                         </button>
+                        */}
                       </div>
                     </div>
                     <p className="recommendation-category">{place.category}</p>

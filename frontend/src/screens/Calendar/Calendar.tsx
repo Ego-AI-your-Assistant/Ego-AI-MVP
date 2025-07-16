@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday } from 'date-fns';
 import './Calendar.css';
 import { fetchEvents, createEvent, deleteEvent } from '@/utils/calendarApi';
+import Popup from 'reactjs-popup';
+import 'reactjs-popup/dist/index.css'; // Import default styles
 
 // Types for our calendar events
 interface CalendarEvent {
@@ -118,12 +120,15 @@ export const Calendar: React.FC = () => {
         ? `${taskForm.description}\n\n${systemDescription}`
         : systemDescription;
       const newEvent = {
+        // id: '',
         title: taskForm.title,
         start: dueDateTime.toISOString(),
         end: endDateTime.toISOString(),
         type: taskForm.type,
         description: fullDescription
       };
+      //setEvents([newEvent] as CalendarEvent[]);
+
       await createEvent(newEvent);
       await loadCalendarEvents();
       setTaskForm({
@@ -131,7 +136,6 @@ export const Calendar: React.FC = () => {
         title: '',
         description: ''
       });
-      alert('Task created successfully!');
     } catch (error) {
       alert('Error creating task. Please try again.');
     } finally {
@@ -141,7 +145,6 @@ export const Calendar: React.FC = () => {
 
   // Удаление задачи
   const handleDeleteEvent = async (eventId: string) => {
-    if (!window.confirm('Удалить задачу?')) return;
     setIsLoading(true);
     try {
       await deleteEvent(eventId);
@@ -257,22 +260,53 @@ export const Calendar: React.FC = () => {
                   return (
                     <div key={`${hour}-${dayIndex}`} className="calendar-cell">
                       {eventsInSlot.map(event => (
-                        <div
-                          key={event.id}
-                          className={`task-block ${event.type}`}
-                          style={getTaskBlockStyle(event, hour)}
-                          title={event.title}
-                        >
-                          <span>{event.title}</span>
-                          <button 
-                            className="delete-btn" 
-                            style={{marginLeft: 8, fontSize: 10, background: '#dc3545', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', padding: '0 6px'}} 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
-                            title="Удалить задачу"
+                        <Popup trigger={
+                          <div
+                            key={event.id}
+                            className={`task-block ${event.type}`}
+                            style={getTaskBlockStyle(event, hour)}
+                            title={event.title}
                           >
-                            ✕
-                          </button>
-                        </div>
+                            <span>{event.title}</span>
+                          </div>
+                          } position="right center">
+                            <p style={{
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              display: 'flex',
+                              padding: "2 5"
+                            }}>Task Description</p>
+                            <div style={{
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              display: 'flex',
+                              padding: "2 5"
+                            }}>{event.description}</div>
+                            <div className="">
+                              <button 
+                                className="delete-btn" 
+                                style={{
+                                  padding: "4px", 
+                                  fontSize: 16, 
+                                  background: '#dc3545', 
+                                  color: 'white', 
+                                  border: 'none', 
+                                  borderRadius: 3, 
+                                  cursor: 'pointer',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  display: 'flex',
+                                  width: '100%'
+                                }} 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
+                                title="Remove Task"
+                              >
+                                Remove Task
+                              </button>
+                              
+                            </div>
+                        </Popup>
+
                       ))}
                     </div>
                   );
@@ -281,101 +315,6 @@ export const Calendar: React.FC = () => {
             ))}
           </div>
         </div>
-      </div>
-      <div className="task-sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">Create New Task</h2>
-        </div>
-        <div className="form-group">
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Task name..."
-            value={taskForm.title}
-            onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
-          />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Duration</label>
-          <div className="duration-controls">
-            <button 
-              className="duration-btn"
-              onClick={() => setTaskForm({...taskForm, duration: Math.max(0.5, taskForm.duration - 0.5)})}
-            >
-              -
-            </button>
-            <input
-              type="text"
-              className="duration-input"
-              value={`${taskForm.duration} hr`}
-              readOnly
-            />
-            <button 
-              className="duration-btn"
-              onClick={() => setTaskForm({...taskForm, duration: taskForm.duration + 0.5})}
-            >
-              +
-            </button>
-          </div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Task Type</label>
-          <select 
-            className="form-input"
-            value={taskForm.type}
-            onChange={(e) => setTaskForm({...taskForm, type: e.target.value as 'focus' | 'tasks' | 'target' | 'other'})}
-          >
-            <option value="focus">Focus</option>
-            <option value="tasks">Tasks</option>
-            <option value="target">Focus target</option>
-            <option value="other">Other work</option>
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Description</label>
-          <textarea
-            className="form-input"
-            placeholder="Optional description..."
-            value={taskForm.description}
-            onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
-            rows={3}
-            style={{resize: 'vertical', minHeight: '60px'}}
-          />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Due date & time</label>
-          <div className="datetime-inputs">
-            <input
-              type="date"
-              className="schedule-input"
-              value={taskForm.dueDate}
-              onChange={(e) => setTaskForm({...taskForm, dueDate: e.target.value})}
-            />
-            <input
-              type="time"
-              className="schedule-input"
-              value={taskForm.dueTime}
-              onChange={(e) => setTaskForm({...taskForm, dueTime: e.target.value})}
-            />
-          </div>
-          <div style={{fontSize: '12px', color: '#666', marginTop: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <span>📅 {format(new Date(taskForm.dueDate), 'EEEE, MMMM d, yyyy')} at {taskForm.dueTime}</span>
-            <button 
-              type="button"
-              style={{fontSize: '10px', padding: '2px 6px', background: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
-              onClick={() => setTaskForm({...taskForm, dueDate: format(new Date(), 'yyyy-MM-dd')})}
-            >
-              Today
-            </button>
-          </div>
-        </div>
-        <button 
-          className="create-btn" 
-          onClick={createTask}
-          disabled={!taskForm.title.trim() || isLoading}
-        >
-          {isLoading ? 'Creating...' : 'Create Task'}
-        </button>
       </div>
     </div>
   );

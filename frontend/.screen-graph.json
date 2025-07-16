@@ -28,7 +28,9 @@
       "routes": [
         "/chat",
         "/calendar",
-        "/geo-search"
+        "/recs",
+        "/geo-search",
+        "/profile"
       ]
     }
   ],
