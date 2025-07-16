@@ -24,7 +24,7 @@ ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001/chat")
 
 class CalendarInterpretRequest(BaseModel):
     text: str
-    location: str  
+    location: Optional[str] = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -119,23 +119,6 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
         else:
             return {"status": "unknown_intent", "message": f"Unknown intent: {ml_response_data['intent']}"}
 
-    if isinstance(ml_response_data, str):
-        print(f"Plain text response received: {ml_response_data}")
-        try:
-            json_data = json.loads(ml_response_data)
-            if isinstance(json_data, dict) and "intent" in json_data and "event" in json_data:
-                print(f"Found JSON intent in string: {json_data['intent']}")
-                if json_data["intent"] == "add":
-                    return await add_event(json_data["event"])
-                elif json_data["intent"] == "delete":
-                    return await delete_event(json_data["event"])
-                elif json_data["intent"] == "update":
-                    return await update_event(json_data["event"])
-                else:
-                    return {"status": "unknown_intent", "message": f"Unknown intent: {json_data['intent']}"}
-        except (json.JSONDecodeError, TypeError):
-            return {"status": "error", "message": "Invalid response format"}
-
     return {"status": "error", "message": "Invalid response format"}
 
 
@@ -172,7 +155,7 @@ async def interpret_and_create_event(
     events = result.fetchall()
     calendar = [serialize_event(e) for e in events]
     print("calendar to send:", calendar)
-    user_location = request.location
+    user_location = request.location or "UTC" # Default to UTC if no location is provided
     timezone_value = None
     try:
         async with httpx.AsyncClient() as client:
@@ -234,7 +217,7 @@ async def interpret_and_create_event(
         return {"status": "not_found"}
     else:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=intent_result.get("message", "Unexpected response from ML service.")
         )
 
