@@ -544,6 +544,16 @@
   line-height: 1.4;
 }
 
+.task-popup {
+  background-color: #dc3545;
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
 @media (max-width: 1400px) {
   .calendar-planner {
     flex-direction: column;
