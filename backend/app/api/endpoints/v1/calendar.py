@@ -159,13 +159,10 @@ async def interpret_and_create_event(
     timezone_value = None
     try:
         async with httpx.AsyncClient() as client:
-            tz_response = await client.get(f"http://localhost:8000/timezone?location={user_location}")
+            tz_response = await client.get(f"http://localhost:8000/api/v1/timezone?location={user_location}")
             tz_response.raise_for_status()
-            tz_response.json()
-            # Получаем текущее UTC время
-            from datetime import datetime, timezone as dt_timezone
-            now_utc = datetime.now(dt_timezone.utc)
-            timezone_value = now_utc.isoformat()
+            tz_data = tz_response.json()
+            timezone_value = tz_data.get("timezone")
     except Exception as e:
         print(f"Не удалось получить временную зону: {e}")
         timezone_value = None
@@ -175,7 +172,7 @@ async def interpret_and_create_event(
         "timezone": timezone_value
     }
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             print(f"Sending request to ML service: {payload}")
             response = await client.post(
                 ML_SERVICE_URL,
