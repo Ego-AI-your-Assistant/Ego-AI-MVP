@@ -41,15 +41,25 @@ def serialize_event(event):
 async def handle_ml_calendar_intent(ml_response_data, db, current_user):
     from app.services.event import EventService
     import uuid
-    
+    from app.database import schemas
+
     print(f"handle_ml_calendar_intent received: {ml_response_data}, type: {type(ml_response_data)}")
-    
+
     event_service = EventService(db)
     user_id = uuid.UUID(str(current_user.id))
 
+    def validate_event_data(event_data):
+        required_fields = ["title", "start_time"]
+        for field in required_fields:
+            if field not in event_data:
+                return False, f"Missing required field: {field}"
+        return True, ""
+
     async def add_event(event_data):
+        is_valid, error_message = validate_event_data(event_data)
+        if not is_valid:
+            return {"status": "error", "message": error_message}
         try:
-            from app.database import schemas
             event_in = schemas.EventCreate(**event_data)
             created_event = await event_service.create(event_in, user_id)
             return {"status": "added", "event": created_event}
@@ -57,6 +67,9 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
             return {"status": "error", "message": str(e)}
 
     async def delete_event(event_data):
+        is_valid, error_message = validate_event_data(event_data)
+        if not is_valid:
+            return {"status": "error", "message": error_message}
         title = event_data.get("title")
         start_time = event_data.get("start_time")
         result = await db.execute(
@@ -73,6 +86,9 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
         return {"status": "not_found"}
 
     async def update_event(event_data):
+        is_valid, error_message = validate_event_data(event_data)
+        if not is_valid:
+            return {"status": "error", "message": error_message}
         title = event_data.get("title")
         start_time = event_data.get("start_time")
         result = await db.execute(
@@ -85,7 +101,6 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
         event = result.fetchone()
         if event:
             try:
-                from app.database import schemas
                 event_in = schemas.EventUpdate(**event_data)
                 updated_event = await event_service.update(event.id, event_in, current_user)
                 return {"status": "changed", "event": updated_event}
@@ -93,7 +108,6 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
                 return {"status": "error", "message": str(e)}
         return {"status": "not_found"}
 
-    # Check if it's a dictionary with intent and event
     if isinstance(ml_response_data, dict) and "intent" in ml_response_data and "event" in ml_response_data:
         print(f"Valid calendar intent detected: {ml_response_data['intent']}")
         if ml_response_data["intent"] == "add":
@@ -104,11 +118,9 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
             return await update_event(ml_response_data["event"])
         else:
             return {"status": "unknown_intent", "message": f"Unknown intent: {ml_response_data['intent']}"}
-    
-    # If it's a plain text response
+
     if isinstance(ml_response_data, str):
         print(f"Plain text response received: {ml_response_data}")
-        # Try to parse it as JSON in case it's a stringified JSON
         try:
             json_data = json.loads(ml_response_data)
             if isinstance(json_data, dict) and "intent" in json_data and "event" in json_data:
@@ -122,11 +134,9 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
                 else:
                     return {"status": "unknown_intent", "message": f"Unknown intent: {json_data['intent']}"}
         except (json.JSONDecodeError, TypeError):
-            # Not JSON, normal text response
-            pass
-    
-    print(f"Invalid/non-calendar response: {ml_response_data}")
-    return {"status": "invalid_response", "data": ml_response_data}
+            return {"status": "error", "message": "Invalid response format"}
+
+    return {"status": "error", "message": "Invalid response format"}
 
 @router.post("/interpret")
 async def interpret_and_create_event(
