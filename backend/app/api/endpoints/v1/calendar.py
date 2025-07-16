@@ -138,26 +138,47 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
 
     return {"status": "error", "message": "Invalid response format"}
 
+
 @router.post("/interpret")
 async def interpret_and_create_event(
     request: CalendarInterpretRequest,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Try to parse the request text as JSON first
+    try:
+        ml_response_data = json.loads(request.text)
+        print(f"Request text is a JSON object: {ml_response_data}")
+        # If it's a valid JSON, we can bypass the ML service call
+        intent_result = await handle_ml_calendar_intent(ml_response_data, db, current_user)
+        print(f"Intent result from direct JSON: {intent_result}")
+
+        if intent_result.get("status") in ["added", "deleted", "changed"]:
+            return {"status": intent_result["status"], "event": intent_result.get("event")}
+        elif intent_result.get("status") == "not_found":
+            return {"status": "not_found"}
+        else: # Handle errors from handle_ml_calendar_intent
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=intent_result.get("message", "Failed to process calendar event.")
+            )
+    except (json.JSONDecodeError, TypeError):
+        # If it's not a JSON, proceed with the original logic
+        print("Request text is not a JSON, calling ML service.")
+
     result = await db.execute(
         models.Event.__table__.select().where(models.Event.user_id == current_user.id)
     )
     events = result.fetchall()
-    calendar = [serialize_event(e) for e in [row for row in events]]
+    calendar = [serialize_event(e) for e in events]
     print("calendar to send:", calendar)
     user_location = request.location
     timezone_value = None
     try:
-        import httpx
         async with httpx.AsyncClient() as client:
             tz_response = await client.get(f"http://localhost:8000/timezone?location={user_location}")
             tz_response.raise_for_status()
-            tz_data = tz_response.json()
+            tz_response.json()
             # Получаем текущее UTC время
             from datetime import datetime, timezone as dt_timezone
             now_utc = datetime.now(dt_timezone.utc)
@@ -206,11 +227,16 @@ async def interpret_and_create_event(
     print(f"Intent result: {intent_result}")
 
     if intent_result.get("status") in ["added", "deleted", "changed"]:
-        return {"status": intent_result["status"]}
+        return {"status": intent_result["status"], "event": intent_result.get("event")}
     elif intent_result.get("status") == "invalid_response":
         return {"status": "invalid_response", "data": intent_result.get("data")}
+    elif intent_result.get("status") == "not_found":
+        return {"status": "not_found"}
     else:
-        return {"status": "error", "message": "Unexpected response from ML service."}
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=intent_result.get("message", "Unexpected response from ML service.")
+        )
 
 @router.get("/get_tasks", response_model=List[schemas.Event])
 async def get_tasks(
