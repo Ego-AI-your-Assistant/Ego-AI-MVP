@@ -7,6 +7,7 @@ import uvicorn
 from chat import Chat
 import os
 import re
+from pydantic import Field
 import json
 import logging
 
@@ -35,6 +36,7 @@ class GeoRecommendationRequest(BaseModel):
     local_time: Optional[str] = None
     timezone: Optional[str] = None
     nearby_places: Optional[List[dict]] = None
+
    
 
 class RecommendationItem(BaseModel):
@@ -42,7 +44,8 @@ class RecommendationItem(BaseModel):
     description: str
     latitude: float
     longitude: float
-    confidence: float 
+    confidence: float = Field(..., ge=0, le=10)
+
 
 
 class GeoRecommendationResponse(BaseModel):
