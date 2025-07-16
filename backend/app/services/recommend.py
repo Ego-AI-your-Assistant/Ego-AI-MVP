@@ -86,7 +86,7 @@ async def get_recommendations_for_user(db: AsyncSession, user: User):
     pois = []
     try:
         if lat and lon:
-            for radius in [25000,30000,35000,40000,45000,50000]:
+            for radius in [25000,30000,35000,40000,45000,50000,60000,70000,80000]:
                 logger.info(f"[recommend] Fetching POI from OpenTripMap for {lat}, {lon} with radius {radius}")
                 pois = await fetch_poi_opentripmap(float(lat), float(lon), radius=radius, limit=50)
                 pois = filter_poi_by_types(pois, POI_TYPES)
