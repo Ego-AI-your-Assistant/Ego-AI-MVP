@@ -96,14 +96,14 @@ def build_geo_prompt(data: GeoRecommendationRequest) -> dict:
         f"{local_time_str}"
         f"{nearby_places_str}"
         f"The user is a {user_desc}.\n"
-        f"Based on this information, recommend 3 interesting places nearby to visit.\n"
+        f"Based on this information, recommend 10 interesting places nearby to visit.\n"
         f"For each place, return a valid JSON object with the following fields:\n"
         f"- name: string (the name of the place)\n"
         f"- description: string (brief description)\n"
         f"- latitude: float\n"
         f"- longitude: float\n"
         f"- confidence: float (0 to 10, how confident you are about this suggestion)\n\n"
-        f"Respond ONLY with a JSON array of 3 objects like this:\n"
+        f"Respond ONLY with a JSON array of 10 objects like this:\n"
         f"[{{\"name\": \"...\", \"description\": \"...\", \"latitude\": ..., \"longitude\": ..., \"confidence\": ...}}, ...]"
     )
 
