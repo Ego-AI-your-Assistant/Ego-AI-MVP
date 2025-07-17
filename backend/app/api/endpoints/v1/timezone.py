@@ -4,7 +4,7 @@ from app.services import timezone
 router = APIRouter()
 
 @router.get("/timezone", summary="Получить информацию о временной зоне по координатам", tags=["timezone"])
-def get_timezone(
+async def get_timezone(
     location: str = Query(..., description="Координаты 'lat,lon' (например, '55.75,37.61')")
 ):
     """
