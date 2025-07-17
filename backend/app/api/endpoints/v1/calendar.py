@@ -1,3 +1,4 @@
+from app.services.geo import forward_geocode
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -155,11 +156,34 @@ async def interpret_and_create_event(
     events = result.fetchall()
     calendar = [serialize_event(e) for e in events]
     print("calendar to send:", calendar)
-    user_location = request.location or "UTC" # Default to UTC if no location is provided
+    user_location = request.location
     timezone_value = None
+    # If location is not provided, try to get city from user profile
+    if not user_location or user_location == "UTC":
+        # Get user's city from profile
+        profile_result = await db.execute(
+            models.User.__table__.select().where(models.User.id == current_user.id)
+        )
+        user_row = profile_result.fetchone()
+        user_city = getattr(user_row, "hometown", None) if user_row else None
+        if user_city:
+            # Geocode city to coordinates
+            try:
+                async with httpx.AsyncClient() as client:
+                    geo_resp = await client.get(
+                        f"http://egoai.duckdns.org:8000/api/v1/geocode?city={user_city}"
+                    )
+                    geo_resp.raise_for_status()
+                    geo_data = geo_resp.json()
+                    lat = geo_data.get("lat")
+                    lon = geo_data.get("lon")
+                    if lat and lon:
+                        user_location = f"{lat},{lon}"
+            except Exception as e:
+                print(f"Не удалось получить координаты города пользователя: {e}")
     try:
         async with httpx.AsyncClient() as client:
-            tz_response = await client.get(f"http://egoai.duckdns.org:8000/api/v1/timezone?location={user_location}")
+            tz_response = await client.get(f"http://egoai.duckdns.org:8000/api/v1/timezone?location={user_location or 'UTC'}")
             tz_response.raise_for_status()
             tz_data = tz_response.json()
             timezone_value = tz_data.get("timezone")
@@ -278,3 +302,19 @@ async def recommend(
     current_user: models.User = Depends(get_current_user)
 ):
     return await get_recommendations_for_user(db, current_user)
+
+@router.get("/geocode")
+async def geocode_city(city: str):
+    """
+    Geocode a city name to latitude and longitude.
+    Returns: {"lat": float, "lon": float} or 404 if not found.
+    """
+    try:
+        geo_data = forward_geocode(city)
+        if geo_data and "lat" in geo_data and "lon" in geo_data:
+            return {"lat": geo_data["lat"], "lon": geo_data["lon"]}
+        else:
+            raise HTTPException(status_code=404, detail="City not found or could not geocode.")
+    except Exception as e:
+        print(f"Geocoding error: {e}")
+        raise HTTPException(status_code=500, detail="Internal geocoding error.")
