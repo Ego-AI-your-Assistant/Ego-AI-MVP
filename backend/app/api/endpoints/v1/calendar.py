@@ -159,7 +159,7 @@ async def interpret_and_create_event(
     timezone_value = None
     try:
         async with httpx.AsyncClient() as client:
-            tz_response = await client.get(f"http://localhost:8000/api/v1/timezone?location={user_location}")
+            tz_response = await client.get(f"http://egoai.duckdns.org:8000/api/v1/timezone?location={user_location}")
             tz_response.raise_for_status()
             tz_data = tz_response.json()
             timezone_value = tz_data.get("timezone")

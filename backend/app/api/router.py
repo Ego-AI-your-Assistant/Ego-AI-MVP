@@ -15,7 +15,8 @@ from app.api.endpoints.v1 import (
     weather,
     geo,
     places,
-    recommend
+    recommend,
+    timezone
 )
 
 api_router = APIRouter()
@@ -36,3 +37,4 @@ api_router.include_router(geo.router, prefix="/geo", tags=["geo"])
 api_router.include_router(places.router, prefix="/places", tags=["places"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
 api_router.include_router(recommend.router, tags=["recommend"])
+api_router.include_router(timezone.router, tags=["timezone"])
