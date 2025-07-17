@@ -127,6 +127,8 @@ export const Chat: React.FC = () => {
               displayMessage = 'Task successfully deleted from the calendar!';
             } else if (interpretResult.status === 'changed') {
               displayMessage = 'Task successfully updated in the calendar!';
+            } else if (interpretResult.status === 'not_found') {
+              displayMessage = 'Task not found in your calendar. Please check the task details and try again.';
             } else if (interpretResult.status === 'invalid_response') {
               console.log('Invalid response received:', interpretResult.data);
               displayMessage = typeof interpretResult.data === 'string' ? interpretResult.data : 'Invalid response from ML service.';
@@ -139,8 +141,8 @@ export const Chat: React.FC = () => {
             displayMessage = 'Failed to process your calendar request. Please try again.';
           }
         } else {
-          // For normal chat responses
-          displayMessage = parsedResponse?.data ?? llmResponse;
+          // For normal chat responses that are not calendar intents
+          displayMessage = llmResponse;
         }
       } catch (e) {
         console.error('Error handling parsed response:', e);

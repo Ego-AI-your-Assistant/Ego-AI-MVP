@@ -30,8 +30,8 @@ app.add_middleware(
 add_exception_handlers(app)
 
 cors_origins = [
-    "http://egoai.duckdns.org",
-    "https://egoai.duckdns.org",
+    "http://localhost",
+    "https://localhost",
     "http://localhost:3000",
     "https://localhost:3000"
 ]
