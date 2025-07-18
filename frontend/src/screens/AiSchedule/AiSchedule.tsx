@@ -137,7 +137,7 @@ const AiSchedule: React.FC = () => {
       console.log("Sending calendar data to rescheduler:", calendar);
 
       // Make the API call to fetch recommendations
-      const response = await fetch("http://egoai.duckdns.org:8001/reschedule", {
+      const response = await fetch("http://ego-ai-ml-service:8001/reschedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ calendar })
@@ -220,7 +220,7 @@ const AiSchedule: React.FC = () => {
           body: JSON.stringify(payload),
           credentials: 'include'
         });
-      }));ERR_NAME_NOT_RESOLVED
+      }));
       setApplyMessage('Календарь успешно обновлен.');
       fetchFullCalendar();
     } catch (err: any) {
