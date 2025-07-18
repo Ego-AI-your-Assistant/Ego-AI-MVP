@@ -85,9 +85,18 @@ def reschedule(req: RescheduleRequest):
                 raw_calendar = json.loads(json_match.group(1))
                 # Flatten if format is [{"event": {...}}, ...]
                 if raw_calendar and isinstance(raw_calendar[0], dict) and 'event' in raw_calendar[0]:
-                    new_calendar = [item['event'] for item in raw_calendar if 'event' in item]
+                    flat_calendar = [item['event'] for item in raw_calendar if 'event' in item]
                 else:
-                    new_calendar = raw_calendar
+                    flat_calendar = raw_calendar
+                # Map fields to match CalendarEvent model
+                def map_event_fields(e):
+                    return {
+                        'summary': e.get('title', ''),
+                        'start': e.get('start_time', ''),
+                        'end': e.get('end_time', ''),
+                        'location': e.get('location', None)
+                    }
+                new_calendar = [map_event_fields(e) for e in flat_calendar]
             except Exception:
                 new_calendar = None
         short_suggestion = suggestion_full.split('\n')[0]
