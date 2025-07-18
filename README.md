@@ -61,14 +61,14 @@ Dont forget to get .env files. use .env.example or write to setterwars to get it
 
 ## Contribution
 
-We are welcome for cntributors just take one issue and do it. If you habe any questions contact to setterwars
+We are welcome for contributors just take one issue and do it. If you habe any questions contact to setterwars
 
 ## Team members 
 
-Salavat Zaynulin - Team Lead/ Product manager/ bacaknd
-Dmitriy Ryazanov - backend
-Diana Tsoi - Frontend
-Stepan Sarantsev - backend
-Andrey Zhdanov - ML/backend
-Artyom Lapin - DevOps
-Mikhail Sofin - Frontend
+- Salavat Zaynulin - Team Lead/ Product manager/ bacaknd
+- Dmitriy Ryazanov - backend
+- Diana Tsoi - Frontend
+- Stepan Sarantsev - backend
+- Andrey Zhdanov - ML/backend
+- Artyom Lapin - DevOps
+- Mikhail Sofin - Frontend
