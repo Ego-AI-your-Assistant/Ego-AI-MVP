@@ -35,6 +35,8 @@ http://egoai.duckdns.org:8000/docs
 
 1. Clone the repository
 
+Dont forget to get .env files. use .env.example or write to setterwars to get it.
+
 > git clone https://github.com/IU-Capstone-Project-2025/Ego_AI.git
 
 2. Go to the project directory
