@@ -82,7 +82,12 @@ def reschedule(req: RescheduleRequest):
         new_calendar = None
         if json_match:
             try:
-                new_calendar = json.loads(json_match.group(1))
+                raw_calendar = json.loads(json_match.group(1))
+                # Flatten if format is [{"event": {...}}, ...]
+                if raw_calendar and isinstance(raw_calendar[0], dict) and 'event' in raw_calendar[0]:
+                    new_calendar = [item['event'] for item in raw_calendar if 'event' in item]
+                else:
+                    new_calendar = raw_calendar
             except Exception:
                 new_calendar = None
         short_suggestion = suggestion_full.split('\n')[0]
