@@ -96,7 +96,7 @@ def reschedule(req: RescheduleRequest):
                         'end': e.get('end_time', ''),
                         'location': e.get('location', None)
                     }
-                new_calendar = [map_event_fields(e) for e in flat_calendar]
+                new_calendar = [{"event": map_event_fields(e)} for e in flat_calendar]
             except Exception:
                 new_calendar = None
         short_suggestion = suggestion_full.split('\n')[0]
