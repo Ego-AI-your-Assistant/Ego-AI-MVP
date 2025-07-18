@@ -48,6 +48,7 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
         events.append(f"- {e['summary']} from {start} to {end} at {location}")
     calendar_context = "\n".join(events)
     content = (
+        "Reschedule task between 6 am and 11 pm"
         "You are an expert time-management assistant. "
         "Analyze the user's calendar and suggest a slightly more convenient or balanced schedule. "
         "Do not focus only on maximum productivity. "
