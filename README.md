@@ -1,5 +1,9 @@
 # Ego AI
 
+## EGO AI build with:
+
+[![Postgres](https://img.shields.io/badge/Postgres-%23316192.svg?logo=postgresql&logoColor=white)](#) [![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?logo=mongodb&logoColor=white)](#) [![FastAPI](https://img.shields.io/badge/FastAPI-009485.svg?logo=fastapi&logoColor=white)](#) [![React](https://img.shields.io/badge/React-%2320232a.svg?logo=react&logoColor=%2361DAFB)](#) [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)  [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](#)
+
 ## What is Ego AI?
 
 Ego AI is your personal assistant in everyday life. He will help you with the allocation of your tasks for the day, week, month. It will also show you all the latest news in the world if you want it. 
@@ -57,6 +61,12 @@ http://egoai.duckdns.org:8000/docs
 
 We are welcome for cntributors just take one issue and do it. If you habe any questions contact to setterwars
 
-## EGO AI build with:
+## Team members 
 
-[![Postgres](https://img.shields.io/badge/Postgres-%23316192.svg?logo=postgresql&logoColor=white)](#) [![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?logo=mongodb&logoColor=white)](#) [![FastAPI](https://img.shields.io/badge/FastAPI-009485.svg?logo=fastapi&logoColor=white)](#) [![React](https://img.shields.io/badge/React-%2320232a.svg?logo=react&logoColor=%2361DAFB)](#) [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)  [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](#)
+Salavat Zaynulin - Team Lead/ Product manager/ bacaknd
+Dmitriy Ryazanov - backend
+Diana Tsoi - Frontend
+Stepan Sarantsev - backend
+Andrey Zhdanov - ML/backend
+Artyom Lapin - DevOps
+Mikhail Sofin - Frontend
