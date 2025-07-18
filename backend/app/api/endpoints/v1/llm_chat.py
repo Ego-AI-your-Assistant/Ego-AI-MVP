@@ -9,7 +9,7 @@ from app.database import schemas
 
 router = APIRouter()
 
-ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001/chat")
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://egoai.duckdns.org:8001/chat")
 
 @router.post("/chat")
 async def chat_with_llm(

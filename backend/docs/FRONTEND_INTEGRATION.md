@@ -11,7 +11,7 @@ In your frontend's `.env` (or `.env.local`) file, you need to define the followi
 ```env
 # API URL
 # (Use REACT_APP_... or VITE_... depending on your bundler)
-REACT_APP_API_URL=http://localhost:8000
+REACT_APP_API_URL=http://egoai.duckdns.org:8000
 ```
 
 ### API Endpoint
@@ -21,7 +21,7 @@ All API requests should be sent to: **`{REACT_APP_API_URL}/api/v1/...`**
 ### API Documentation
 
 Complete interactive documentation for all available endpoints is located at:
-**[http://localhost:8000/docs](http://localhost:8000/docs)**
+**[http://egoai.duckdns.org:8000/docs](http://egoai.duckdns.org:8000/docs)**
 
 Use it to view data models, request parameters, and response examples.
 
@@ -55,7 +55,7 @@ When a user clicks the "Login with Google" button:
 1.  After successful Google login, the backend will redirect the user back to your application, to a special route that you should create, for example, `/login/callback`.
 2.  The URL will contain a JWT token as a query parameter:
     ```
-    http://localhost:3000/login/callback?token=eyJhbGciOiJIUzI1Ni...
+    http://egoai.duckdns.org:3000/login/callback?token=eyJhbGciOiJIUzI1Ni...
     ```
 3.  On this page (`/login/callback`), your task is to extract the token from the URL.
     ```javascript

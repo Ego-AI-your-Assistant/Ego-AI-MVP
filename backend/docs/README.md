@@ -67,7 +67,7 @@ ENVIRONMENT="development"
 
 # FRONTEND URL
 # Address where the user will be redirected after successful login
-FRONTEND_URL="http://localhost:3000"
+FRONTEND_URL="http://egoai.duckdns.org:3000"
 
 # SECURITY
 SECRET_KEY="YOUR_VERY_SECRET_KEY" # Generate using: python -c 'import secrets; print(secrets.token_urlsafe(32))'
@@ -78,11 +78,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES=11520 # 8 days
 GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
 # This URI must be added to "Authorized redirect URIs" in Google OAuth settings
-GOOGLE_REDIRECT_URI="http://localhost:8000/api/v1/auth/google/callback"
+GOOGLE_REDIRECT_URI="http://egoai.duckdns.org:8000/api/v1/auth/google/callback"
 
 # POSTGRESQL DATABASE
 # Specify full connection URL
-DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/egoai"
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@egoai.duckdns.org:5432/egoai"
 ```
 
 **Important:** Replace placeholders (`YOUR_...`) with your actual values.
@@ -132,7 +132,7 @@ The backend is fully ready for integration with client applications. The Google 
 
 ## 6. API Testing (Manual)
 
-Interactive API documentation is available at `http://localhost:8000/docs` after starting the server. Here you can view all endpoints and test them directly.
+Interactive API documentation is available at `http://egoai.duckdns.org:8000/docs` after starting the server. Here you can view all endpoints and test them directly.
 
 ## 7. Automated Tests (Pytest)
 

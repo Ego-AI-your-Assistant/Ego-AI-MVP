@@ -377,7 +377,7 @@ async def interpret_and_create_event(
             try:
                 async with httpx.AsyncClient() as client:
                     geo_resp = await client.get(
-                        f"http://localhost:8000/api/v1/geocode?city={user_city}"
+                        f"http://egoai.duckdns.org:8000/api/v1/geocode?city={user_city}"
                     )
                     geo_resp.raise_for_status()
                     geo_data = geo_resp.json()
@@ -389,7 +389,7 @@ async def interpret_and_create_event(
                 print(f"Не удалось получить координаты города пользователя: {e}")
     try:
         async with httpx.AsyncClient() as client:
-            tz_response = await client.get(f"http://localhost:8000/api/v1/timezone?location={user_location or 'UTC'}")
+            tz_response = await client.get(f"http://egoai.duckdns.org:8000/api/v1/timezone?location={user_location or 'UTC'}")
             tz_response.raise_for_status()
             tz_data = tz_response.json()
             timezone_value = tz_data.get("timezone")

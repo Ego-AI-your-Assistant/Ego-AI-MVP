@@ -152,9 +152,9 @@ Optimizes the user's schedule by suggesting a more convenient order of events wi
 
 3. Documentation is available at:
 ```
-http://localhost:8001/docs  
-http://localhost:8002/docs  
-http://localhost:8003/docs
+http://egoai.duckdns.org:8001/docs  
+http://egoai.duckdns.org:8002/docs  
+http://egoai.duckdns.org:8003/docs
 ```
 
 ---
