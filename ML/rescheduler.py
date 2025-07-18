@@ -28,12 +28,15 @@ class CalendarEvent(BaseModel):
     end: str    
     location: Optional[str] = None
 
+class RescheduleEvent(BaseModel):
+    event: CalendarEvent
+
 class RescheduleRequest(BaseModel):
     calendar: List[CalendarEvent]
 
 class RescheduleResponse(BaseModel):
     suggestion: str
-    new_calendar: Optional[List[CalendarEvent]] = None
+    new_calendar: Optional[List[RescheduleEvent]] = None
 
 def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
     today = datetime.datetime.now().strftime("%B %d, %Y")
@@ -55,13 +58,10 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
         "[\n"
         "  {\n"
         "    \"event\": {\n"
-        "      \"title\": \"Event title\",\n"
-        "      \"description\": \"Short description\",\n"
-        "      \"start_time\": \"YYYY-MM-DDTHH:MM\",\n"
-        "      \"end_time\": \"YYYY-MM-DDTHH:MM\",\n"
-        "      \"all_day\": true or false,\n"
-        "      \"location\": \"Event location\",\n"
-        "      \"type\": \"meeting | call | personal | focus time | other work\"\n"
+        "      \"summary\": \"Event title\",\n"
+        "      \"start\": \"YYYY-MM-DDTHH:MM\",\n"
+        "      \"end\": \"YYYY-MM-DDTHH:MM\",\n"
+        "      \"location\": \"Event location\"\n"
         "    }\n"
         "  },\n"
         "  ...\n"
@@ -83,20 +83,13 @@ def reschedule(req: RescheduleRequest):
         if json_match:
             try:
                 raw_calendar = json.loads(json_match.group(1))
-                # Flatten if format is [{"event": {...}}, ...]
+                # The AI is expected to return a list of {"event": {...}}
+                # We just need to validate it matches our Pydantic models
                 if raw_calendar and isinstance(raw_calendar[0], dict) and 'event' in raw_calendar[0]:
-                    flat_calendar = [item['event'] for item in raw_calendar if 'event' in item]
-                else:
-                    flat_calendar = raw_calendar
-                # Map fields to match CalendarEvent model
-                def map_event_fields(e):
-                    return {
-                        'summary': e.get('title', ''),
-                        'start': e.get('start_time', ''),
-                        'end': e.get('end_time', ''),
-                        'location': e.get('location', None)
-                    }
-                new_calendar = [{"event": map_event_fields(e)} for e in flat_calendar]
+                     new_calendar = raw_calendar
+                else: # If the AI returns a flat list, wrap it
+                    new_calendar = [{"event": item} for item in raw_calendar]
+
             except Exception:
                 new_calendar = None
         short_suggestion = suggestion_full.split('\n')[0]
