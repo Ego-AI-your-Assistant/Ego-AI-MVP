@@ -15,6 +15,18 @@ Ego AI will become an indispensable tool in your life.
 
 ## How to use Ego AI?
 
+**using ready server**
+
+1. Try Ego AI
+
+http://egoai.duckdns.org:3000/
+
+2. API documentation
+
+http://egoai.duckdns.org:8000/docs
+
+## For developers:
+
 **Locally**:
 
 1. Clone the repository
@@ -41,15 +53,9 @@ Ego AI will become an indispensable tool in your life.
 
 > http://egoai.duckdns.org:8000/docs
 
-**using ready server**
+## Contribution
 
-1. Try Ego AI
-
-http://egoai.duckdns.org:3000/
-
-2. API documentation
-
-http://egoai.duckdns.org:8000/docs
+We are welcome for cntributors just take one issue and do it. If you habe any questions contact to setterwars
 
 ## EGO AI build with:
 
