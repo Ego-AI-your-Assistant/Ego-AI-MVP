@@ -17,13 +17,12 @@ export interface CalendarEvent {
 
 export interface RescheduleEvent {
   event: {
-    title: string;
-    description: string;
-    start_time: string;
-    end_time: string;
-    all_day: boolean;
-    location: string;
-    type: string;
+    summary: string;
+    start: string;
+    end: string;
+    location: string | null;
+    description?: string;
+    type?: string;
   };
 }
 
@@ -171,9 +170,9 @@ const AiSchedule: React.FC = () => {
           console.log(`Event ${index} structure:`, {
             hasEvent: !!item.event,
             eventKeys: item.event ? Object.keys(item.event) : 'no event object',
-            title: item.event?.title,
-            start_time: item.event?.start_time,
-            end_time: item.event?.end_time,
+            summary: item.event?.summary,
+            start: item.event?.start,
+            end: item.event?.end,
             location: item.event?.location,
             type: item.event?.type
           });
@@ -202,14 +201,14 @@ const AiSchedule: React.FC = () => {
       await Promise.all(recCalendar.map(async item => {
         const e = item.event;
         const payload = {
-          title: e.title,
+          title: e.summary,
           description: e.description || '',
-          start_time: e.start_time,
-          end_time: e.end_time,
+          start_time: e.start,
+          end_time: e.end,
           location: e.location || ''
         };
         // Ищем существующее событие по заголовку
-        const existing = events.find(ev => ev.title === e.title);
+        const existing = events.find(ev => ev.title === e.summary);
         const url = existing
           ? `${API_BASE_URL}/api/v1/calendar/update_task/${existing.id}`
           : `${API_BASE_URL}/api/v1/calendar/set_task`;
@@ -327,9 +326,9 @@ const AiSchedule: React.FC = () => {
                 {recCalendar.map((item, index) => {
                   // Access the event data safely
                   const eventData = item.event;
-                  const title = eventData?.title || 'Untitled Event';
-                  const startTime = eventData?.start_time || 'No start time';
-                  const endTime = eventData?.end_time || 'No end time';
+                  const title = eventData?.summary || 'Untitled Event';
+                  const startTime = eventData?.start || 'No start time';
+                  const endTime = eventData?.end || 'No end time';
                   const location = eventData?.location || '';
                   const type = eventData?.type || '';
                   
