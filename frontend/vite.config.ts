@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: process.env.VITE_BACKEND || 'http://localhost:8000',
+          target: process.env.VITE_BACKEND || 'http://egoai.duckdns.org:8000',
           changeOrigin: true,
           secure: false,
         }
