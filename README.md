@@ -45,11 +45,11 @@ Ego AI will become an indispensable tool in your life.
 
 1. Try Ego AI
 
-http://egoai.duckdns.org:3000/
+http://localhost:3000/
 
 2. API documentation
 
-http://egoai.duckdns.org:8000/docs
+http://localhost:8000/docs
 
 ## EGO AI build with:
 

@@ -108,7 +108,7 @@ def format_event(event):
         return f"- {summary} (formatting error)"
 
 
-def build_system_prompt(calendar_data=None, timezone="UTC"):
+def build_system_prompt(calendar_data=None, timezone="UTC+3"):
     """
     Builds a system prompt for the LLM based on the user's calendar.
 
@@ -141,20 +141,22 @@ def build_system_prompt(calendar_data=None, timezone="UTC"):
         '  "event": {\n'
         '    "title": "...",\n'
         '    "description": "...",\n'
-        '    "start_time": "...",\n'
-        '    "end_time": "...",\n'
+        '    "start_time": "YYYY-MM-DD HH:MM:SS+03:00",\n'
+        '    "end_time": "YYYY-MM-DD HH:MM:SS+03:00",\n'
         '    "all_day": true | false,\n'
         '    "location": "...",\n'
         '    "type": "..."\n'
         "  }\n"
         "}\n"
+        "IMPORTANT: Always use the exact timezone format with colon (+03:00) for start_time and end_time fields. Never use +0300 format.\n"
         "If the user does not specify the event type, use 'other work' by default. "
         "For normal answers (not related to calendar editing), reply in plain natural language with no special formatting, no escape characters, and no code or Markdown syntax — just clean human-readable text."
         "If the user's message is a greeting (like \"Hello\", \"Hi\", etc.), respond in a friendly and natural way without mentioning the calendar or productivity, unless explicitly asked."
         "Base your answers on the provided calendar and general knowledge, but do not focus only on the calendar. "
-        f"User's timezone is: {timezone}. All times should be in the user's local time zone unless otherwise specified.\n"
         f"Today: {today}\n"
-        f"Here is the user's calendar:\n\n{calendar_context}"
+        f"Here is the user's calendar:\n\n{calendar_context}\n"
+        "When creating or updating tasks, always use Moscow timezone (+03:00 format).\n"
+        "Use only the timezone format with colon: +03:00, never +0300 or GMT+3."
     )
     return {"role": "system", "content": content}
 
@@ -175,7 +177,7 @@ class ChatRequest(BaseModel):
     message: str
     calendar: Optional[List[dict]] = None
     history: Optional[List[dict]] = None
-    timezone: Optional[str] = "UTC"
+    timezone: Optional[str] = "55.75,37.61"
 
 
 class ChatResponse(BaseModel):
@@ -205,7 +207,7 @@ def chat(req: ChatRequest):
         if req.history:
             print(f"Chat history provided: {len(req.history)} messages")
         
-        system_prompt = build_system_prompt(req.calendar)
+        system_prompt = build_system_prompt(req.calendar, req.timezone)
         
         # Сжимаем историю, если сообщений >= 50
         messages = [system_prompt]

@@ -72,10 +72,10 @@ cors_origins = [
     "http://localhost:8000", 
     "http://185.207.133.14:3000",
     "http://185.207.133.14:8000",
-    "http://egoai.duckdns.org:3000",
-    "http://egoai.duckdns.org:8000",
-    "https://egoai.duckdns.org:3000",
-    "https://egoai.duckdns.org:8000"
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "https://localhost:3000",
+    "https://localhost:8000"
 ]
 
 app.add_middleware(

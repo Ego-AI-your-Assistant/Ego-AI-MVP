@@ -21,7 +21,7 @@ from app.services.recommend import get_recommendations_for_user
 
 router = APIRouter()
 
-ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001/chat")
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://ego-ai-ml-service:8001/chat")
 
 class CalendarInterpretRequest(BaseModel):
     text: str
@@ -50,7 +50,8 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
     user_id = uuid.UUID(str(current_user.id))
 
     def validate_event_data(event_data):
-        required_fields = ["title", "start_time"]
+        # Only require start_time, title is optional for fallback logic
+        required_fields = ["start_time"]
         for field in required_fields:
             if field not in event_data:
                 return False, f"Missing required field: {field}"
@@ -60,6 +61,15 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
         is_valid, error_message = validate_event_data(event_data)
         if not is_valid:
             return {"status": "error", "message": error_message}
+        from dateutil import parser
+        # Parse and normalize start_time and end_time
+        for field in ["start_time", "end_time"]:
+            if field in event_data and isinstance(event_data[field], str):
+                try:
+                    dt = parser.parse(event_data[field])
+                    event_data[field] = dt
+                except Exception:
+                    return {"status": "error", "message": f"Invalid {field} format: {event_data[field]}"}
         try:
             event_in = schemas.EventCreate(**event_data)
             created_event = await event_service.create(event_in, user_id)
@@ -71,43 +81,213 @@ async def handle_ml_calendar_intent(ml_response_data, db, current_user):
         is_valid, error_message = validate_event_data(event_data)
         if not is_valid:
             return {"status": "error", "message": error_message}
+        from dateutil import parser
+        from datetime import timezone
+        import zoneinfo
         title = event_data.get("title")
         start_time = event_data.get("start_time")
+        if isinstance(start_time, str):
+            try:
+                start_time = parser.parse(start_time)
+            except Exception:
+                return {"status": "error", "message": "Invalid start_time format"}
+        # Always convert to UTC for comparison
+        if start_time.tzinfo is None:
+            try:
+                moscow_tz = zoneinfo.ZoneInfo("Europe/Moscow")
+                start_time = start_time.replace(tzinfo=moscow_tz)
+            except Exception:
+                start_time = start_time.replace(tzinfo=timezone.utc)
+        start_time_utc = start_time.astimezone(timezone.utc)
+        
+        # Get all user events for searching
         result = await db.execute(
             models.Event.__table__.select().where(
-                (models.Event.user_id == user_id) &
-                (models.Event.title == title) &
-                (models.Event.start_time == start_time)
+                (models.Event.user_id == user_id)
             )
         )
-        event = result.fetchone()
-        if event:
-            await event_service.delete(event.id, current_user)
-            return {"status": "deleted"}
-        return {"status": "not_found"}
+        all_events = result.fetchall()
+        
+        # If title is present, try various matching strategies
+        if title:
+            title_lower = title.lower()
+            
+            # Strategy 1: Exact title and time match
+            for event in all_events:
+                if event.title and event.title.lower() == title_lower:
+                    db_start_time = event.start_time
+                    if db_start_time is not None and db_start_time.astimezone(timezone.utc) == start_time_utc:
+                        await event_service.delete(event.id, current_user)
+                        return {"status": "deleted", "message": "Deleted by exact title and time match"}
+            
+            # Strategy 2: Fuzzy title match with time match
+            for event in all_events:
+                event_title_lower = event.title.lower() if event.title else ""
+                db_start_time = event.start_time
+                
+                # Check if titles have significant overlap (either contains the other)
+                if (title_lower in event_title_lower or event_title_lower in title_lower) and \
+                   db_start_time is not None and db_start_time.astimezone(timezone.utc) == start_time_utc:
+                    await event_service.delete(event.id, current_user)
+                    return {"status": "deleted", "message": "Deleted by fuzzy title and time match"}
+            
+            # Strategy 3: Fuzzy title match WITHOUT exact time match (for when user specifies wrong time)
+            # Find events that contain the target title or vice versa
+            matching_events = []
+            for event in all_events:
+                event_title_lower = event.title.lower() if event.title else ""
+                # Check if titles have significant overlap (either contains the other)
+                if title_lower in event_title_lower or event_title_lower in title_lower:
+                    matching_events.append(event)
+            
+            if len(matching_events) == 1:
+                # If only one event matches the title pattern, delete it regardless of time
+                await event_service.delete(matching_events[0].id, current_user)
+                return {"status": "deleted", "message": "Deleted by title match (time mismatch ignored)"}
+            elif len(matching_events) > 1:
+                # If multiple events match, try to use time to disambiguate
+                for event in matching_events:
+                    db_start_time = event.start_time
+                    if db_start_time is not None and db_start_time.astimezone(timezone.utc) == start_time_utc:
+                        await event_service.delete(event.id, current_user)
+                        return {"status": "deleted", "message": "Deleted by title match with time disambiguation"}
+                # If no time match, return error asking for clarification
+                return {"status": "error", "message": f"Multiple events found with similar titles. Found {len(matching_events)} events. Please be more specific."}
+            
+            # Strategy 4: Exact time match without title consideration
+            matching_events = [event for event in all_events if event.start_time is not None and event.start_time.astimezone(timezone.utc) == start_time_utc]
+            if len(matching_events) == 1:
+                await event_service.delete(matching_events[0].id, current_user)
+                return {"status": "deleted", "message": "Deleted by time match (title mismatch ignored)"}
+            
+            return {"status": "not_found"}
+        else:
+            # Fallback: match by start_time only (warn if multiple)
+            matching_events = [event for event in all_events if event.start_time is not None and event.start_time.astimezone(timezone.utc) == start_time_utc]
+            if not matching_events:
+                return {"status": "not_found"}
+            if len(matching_events) > 1:
+                return {"status": "error", "message": "Multiple events found at this time. Please specify the title."}
+            await event_service.delete(matching_events[0].id, current_user)
+            return {"status": "deleted", "message": "Deleted by start_time only (no title provided)"}
 
     async def update_event(event_data):
         is_valid, error_message = validate_event_data(event_data)
         if not is_valid:
             return {"status": "error", "message": error_message}
+        from dateutil import parser
+        from datetime import timezone
+        import zoneinfo
         title = event_data.get("title")
         start_time = event_data.get("start_time")
+        if isinstance(start_time, str):
+            try:
+                start_time = parser.parse(start_time)
+            except Exception:
+                return {"status": "error", "message": "Invalid start_time format"}
+        # Always convert to UTC for comparison
+        if start_time.tzinfo is None:
+            try:
+                moscow_tz = zoneinfo.ZoneInfo("Europe/Moscow")
+                start_time = start_time.replace(tzinfo=moscow_tz)
+            except Exception:
+                start_time = start_time.replace(tzinfo=timezone.utc)
+        start_time_utc = start_time.astimezone(timezone.utc)
+        
+        # Get all user events for searching
         result = await db.execute(
             models.Event.__table__.select().where(
-                (models.Event.user_id == user_id) &
-                (models.Event.title == title) &
-                (models.Event.start_time == start_time)
+                (models.Event.user_id == user_id)
             )
         )
-        event = result.fetchone()
-        if event:
+        all_events = result.fetchall()
+        
+        # If title is present, try various matching strategies
+        if title:
+            title_lower = title.lower()
+            
+            # Strategy 1: Exact title and time match
+            for event in all_events:
+                if event.title and event.title.lower() == title_lower:
+                    db_start_time = event.start_time
+                    if db_start_time is not None and db_start_time.astimezone(timezone.utc) == start_time_utc:
+                        try:
+                            event_in = schemas.EventUpdate(**event_data)
+                            updated_event = await event_service.update(event.id, event_in, current_user)
+                            return {"status": "changed", "event": updated_event}
+                        except Exception as e:
+                            return {"status": "error", "message": str(e)}
+            
+            # Strategy 2: Fuzzy title match with time match
+            for event in all_events:
+                event_title_lower = event.title.lower() if event.title else ""
+                db_start_time = event.start_time
+                
+                # Check if titles have significant overlap (either contains the other)
+                if (title_lower in event_title_lower or event_title_lower in title_lower) and \
+                   db_start_time is not None and db_start_time.astimezone(timezone.utc) == start_time_utc:
+                    try:
+                        event_in = schemas.EventUpdate(**event_data)
+                        updated_event = await event_service.update(event.id, event_in, current_user)
+                        return {"status": "changed", "event": updated_event}
+                    except Exception as e:
+                        return {"status": "error", "message": str(e)}
+            
+            # Strategy 3: Fuzzy title match WITHOUT exact time match (for when user specifies wrong time)
+            # Find events that contain the target title or vice versa
+            matching_events = []
+            for event in all_events:
+                event_title_lower = event.title.lower() if event.title else ""
+                # Check if titles have significant overlap (either contains the other)
+                if title_lower in event_title_lower or event_title_lower in title_lower:
+                    matching_events.append(event)
+            
+            if len(matching_events) == 1:
+                # If only one event matches the title pattern, update it regardless of time
+                try:
+                    event_in = schemas.EventUpdate(**event_data)
+                    updated_event = await event_service.update(matching_events[0].id, event_in, current_user)
+                    return {"status": "changed", "event": updated_event, "message": "Updated by title match (time mismatch ignored)"}
+                except Exception as e:
+                    return {"status": "error", "message": str(e)}
+            elif len(matching_events) > 1:
+                # If multiple events match, try to use time to disambiguate
+                for event in matching_events:
+                    db_start_time = event.start_time
+                    if db_start_time is not None and db_start_time.astimezone(timezone.utc) == start_time_utc:
+                        try:
+                            event_in = schemas.EventUpdate(**event_data)
+                            updated_event = await event_service.update(event.id, event_in, current_user)
+                            return {"status": "changed", "event": updated_event}
+                        except Exception as e:
+                            return {"status": "error", "message": str(e)}
+                # If no time match, return error asking for clarification
+                return {"status": "error", "message": f"Multiple events found with similar titles. Found {len(matching_events)} events. Please be more specific."}
+            
+            # Strategy 4: Exact time match without title consideration
+            matching_events = [event for event in all_events if event.start_time is not None and event.start_time.astimezone(timezone.utc) == start_time_utc]
+            if len(matching_events) == 1:
+                try:
+                    event_in = schemas.EventUpdate(**event_data)
+                    updated_event = await event_service.update(matching_events[0].id, event_in, current_user)
+                    return {"status": "changed", "event": updated_event, "message": "Updated by time match (title mismatch ignored)"}
+                except Exception as e:
+                    return {"status": "error", "message": str(e)}
+            
+            return {"status": "not_found"}
+        else:
+            # Fallback: match by start_time only (warn if multiple)
+            matching_events = [event for event in all_events if event.start_time is not None and event.start_time.astimezone(timezone.utc) == start_time_utc]
+            if not matching_events:
+                return {"status": "not_found"}
+            if len(matching_events) > 1:
+                return {"status": "error", "message": "Multiple events found at this time. Please specify the title."}
             try:
                 event_in = schemas.EventUpdate(**event_data)
-                updated_event = await event_service.update(event.id, event_in, current_user)
-                return {"status": "changed", "event": updated_event}
+                updated_event = await event_service.update(matching_events[0].id, event_in, current_user)
+                return {"status": "changed", "event": updated_event, "message": "Updated by start_time only (no title provided)"}
             except Exception as e:
                 return {"status": "error", "message": str(e)}
-        return {"status": "not_found"}
 
     if isinstance(ml_response_data, dict) and "intent" in ml_response_data and "event" in ml_response_data:
         print(f"Valid calendar intent detected: {ml_response_data['intent']}")
@@ -129,6 +309,32 @@ async def interpret_and_create_event(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # If the request text contains the word 'delete', try to parse and call delete_task directly
+    if 'delete' in request.text.lower():
+        try:
+            # Try to extract event info from JSON in the text, if present
+            ml_response_data = None
+            try:
+                ml_response_data = json.loads(request.text)
+            except Exception:
+                pass
+            if ml_response_data and isinstance(ml_response_data, dict) and 'event' in ml_response_data:
+                # Use the fallback delete_event logic from handle_ml_calendar_intent
+                intent_result = await handle_ml_calendar_intent({"intent": "delete", "event": ml_response_data["event"]}, db, current_user)
+                if intent_result.get("status") == "deleted":
+                    return {"status": "deleted"}
+                elif intent_result.get("status") == "not_found":
+                    return {"status": "not_found"}
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=intent_result.get("message", "Failed to delete event.")
+                    )
+            # If not JSON, fallback to ML logic below
+        except Exception as e:
+            print(f"Direct delete intent failed: {e}")
+            # Fallback to ML logic below
+
     # Try to parse the request text as JSON first
     try:
         ml_response_data = json.loads(request.text)
@@ -171,7 +377,7 @@ async def interpret_and_create_event(
             try:
                 async with httpx.AsyncClient() as client:
                     geo_resp = await client.get(
-                        f"http://egoai.duckdns.org:8000/api/v1/geocode?city={user_city}"
+                        f"http://localhost:8000/api/v1/geocode?city={user_city}"
                     )
                     geo_resp.raise_for_status()
                     geo_data = geo_resp.json()
@@ -183,7 +389,7 @@ async def interpret_and_create_event(
                 print(f"Не удалось получить координаты города пользователя: {e}")
     try:
         async with httpx.AsyncClient() as client:
-            tz_response = await client.get(f"http://egoai.duckdns.org:8000/api/v1/timezone?location={user_location or 'UTC'}")
+            tz_response = await client.get(f"http://localhost:8000/api/v1/timezone?location={user_location or 'UTC'}")
             tz_response.raise_for_status()
             tz_data = tz_response.json()
             timezone_value = tz_data.get("timezone")

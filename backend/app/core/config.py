@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ML_SERVICE_URL: str = "http://ego-ai-ml-service:8001/chat"
     
     FRONTEND_URL: str = "http://localhost:3000"
-    BACKEND_CORS_ORIGINS: str = "http://egoai.duckdns.org:3000"
+    BACKEND_CORS_ORIGINS: str = "http://localhost:3000"
     
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
@@ -40,12 +40,12 @@ class Settings(BaseSettings):
         
         # Ensure we have the production origins with proper ports
         production_origins = [
-            "http://egoai.duckdns.org", 
-            "https://egoai.duckdns.org",
-            "http://egoai.duckdns.org:3000", 
-            "https://egoai.duckdns.org:3000",
-            "http://egoai.duckdns.org:8000", 
-            "https://egoai.duckdns.org:8000"
+            "http://localhost", 
+            "https://localhost",
+            "http://localhost:3000", 
+            "https://localhost:3000",
+            "http://localhost:8000", 
+            "https://localhost:8000"
         ]
         for origin in production_origins:
             if origin not in origins:
