@@ -12,9 +12,20 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Unified ML API")
 
+cors_origins = [
+    "http://egoai.duckdns.org:3000",
+    "http://egoai.duckdns.org:8000", 
+    "http://185.207.133.14:3000",
+    "http://185.207.133.14:8000",
+    "http://egoai.duckdns.org:3000",
+    "http://egoai.duckdns.org:8000",
+    "https://egoai.duckdns.org:3000",
+    "https://egoai.duckdns.org:8000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

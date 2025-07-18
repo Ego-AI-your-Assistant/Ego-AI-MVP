@@ -29,7 +29,7 @@ GOOGLE_REDIRECT_URI="http://185.207.133.14:8000/api/v1/auth/google/callback"
 
 # Frontend Configuration
 FRONTEND_URL="http://185.207.133.14:3000"
-BACKEND_CORS_ORIGINS=["http://185.207.133.14:3000", "http://localhost:3000"]
+BACKEND_CORS_ORIGINS=["http://185.207.133.14:3000", "http://egoai.duckdns.org:3000"]
 ```
 
 ### API Endpoints
@@ -69,7 +69,7 @@ VITE_API_URL=http://185.207.133.14:8000
 4. Create OAuth 2.0 credentials
 5. Add authorized redirect URIs:
    - `http://185.207.133.14:8000/api/v1/auth/google/callback`
-   - `http://localhost:8000/api/v1/auth/google/callback` (for development)
+   - `http://egoai.duckdns.org:8000/api/v1/auth/google/callback` (for development)
 
 ## Security Features
 
@@ -82,8 +82,8 @@ VITE_API_URL=http://185.207.133.14:8000
 ## Development vs Production
 
 ### Development
-- Use `localhost` URLs in environment variables
-- CORS allows localhost origins
+- Use `egoai.duckdns.org` URLs in environment variables
+- CORS allows egoai.duckdns.org origins
 
 ### Production  
 - Use production server URLs (185.207.133.14)

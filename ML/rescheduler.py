@@ -28,12 +28,15 @@ class CalendarEvent(BaseModel):
     end: str    
     location: Optional[str] = None
 
+class RescheduleEvent(BaseModel):
+    event: CalendarEvent
+
 class RescheduleRequest(BaseModel):
     calendar: List[CalendarEvent]
 
 class RescheduleResponse(BaseModel):
     suggestion: str
-    new_calendar: Optional[List[CalendarEvent]] = None
+    new_calendar: Optional[List[RescheduleEvent]] = None
 
 def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
     today = datetime.datetime.now().strftime("%B %d, %Y")
@@ -45,6 +48,7 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
         events.append(f"- {e['summary']} from {start} to {end} at {location}")
     calendar_context = "\n".join(events)
     content = (
+        "Reschedule task between 6 am and 11 pm"
         "You are an expert time-management assistant. "
         "Analyze the user's calendar and suggest a slightly more convenient or balanced schedule. "
         "Do not focus only on maximum productivity. "
@@ -55,13 +59,10 @@ def build_reschedule_prompt(calendar_data: List[dict]) -> dict:
         "[\n"
         "  {\n"
         "    \"event\": {\n"
-        "      \"title\": \"Event title\",\n"
-        "      \"description\": \"Short description\",\n"
-        "      \"start_time\": \"YYYY-MM-DDTHH:MM\",\n"
-        "      \"end_time\": \"YYYY-MM-DDTHH:MM\",\n"
-        "      \"all_day\": true or false,\n"
-        "      \"location\": \"Event location\",\n"
-        "      \"type\": \"meeting | call | personal | focus time | other work\"\n"
+        "      \"summary\": \"Event title\",\n"
+        "      \"start\": \"YYYY-MM-DDTHH:MM\",\n"
+        "      \"end\": \"YYYY-MM-DDTHH:MM\",\n"
+        "      \"location\": \"Event location\"\n"
         "    }\n"
         "  },\n"
         "  ...\n"
@@ -82,7 +83,14 @@ def reschedule(req: RescheduleRequest):
         new_calendar = None
         if json_match:
             try:
-                new_calendar = json.loads(json_match.group(1))
+                raw_calendar = json.loads(json_match.group(1))
+                # The AI is expected to return a list of {"event": {...}}
+                # We just need to validate it matches our Pydantic models
+                if raw_calendar and isinstance(raw_calendar[0], dict) and 'event' in raw_calendar[0]:
+                     new_calendar = raw_calendar
+                else: # If the AI returns a flat list, wrap it
+                    new_calendar = [{"event": item} for item in raw_calendar]
+
             except Exception:
                 new_calendar = None
         short_suggestion = suggestion_full.split('\n')[0]

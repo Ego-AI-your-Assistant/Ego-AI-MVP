@@ -278,12 +278,6 @@ export const Chat: React.FC = () => {
               className="chat-input"
             />
             <div className="chat-button-group">
-              <button className="chat-mic-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" fill="currentColor"/>
-                  <path d="M19 12C19 15.53 16.39 18.44 13 18.93V21H11V18.93C7.61 18.44 5 15.53 5 12H7C7 14.76 9.24 17 12 17C14.76 17 17 14.76 17 12H19Z" fill="currentColor"/>
-                </svg>
-              </button>
               <button 
                 onClick={sendMessage} 
                 className="chat-send-btn"

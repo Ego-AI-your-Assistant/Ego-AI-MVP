@@ -14,12 +14,12 @@
 
 4. For entering to frontend use:
 
-> http://localhost:3000
+> http://egoai.duckdns.org:3000
 
 5. For using backend endpoints use 
 
-> http://localhost:8000
+> http://egoai.duckdns.org:8000
 
 6. For see documentation use
 
-> http://localhost:8000/docs
+> http://egoai.duckdns.org:8000/docs

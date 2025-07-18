@@ -31,25 +31,25 @@ Ego AI will become an indispensable tool in your life.
 
 4. For entering to frontend use:
 
-> http://localhost:3000
+> http://egoai.duckdns.org:3000
 
 5. For using backend endpoints use 
 
-> http://localhost:8000
+> http://egoai.duckdns.org:8000
 
 6. For see documentation use
 
-> http://localhost:8000/docs
+> http://egoai.duckdns.org:8000/docs
 
 **using ready server**
 
 1. Try Ego AI
 
-http://localhost:3000/
+http://egoai.duckdns.org:3000/
 
 2. API documentation
 
-http://localhost:8000/docs
+http://egoai.duckdns.org:8000/docs
 
 ## EGO AI build with:
 
