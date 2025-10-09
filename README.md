@@ -65,7 +65,7 @@ We are welcome for contributors just take one issue and do it. If you habe any q
 
 ## Team members 
 
-- Salavat Zaynulin - Team Lead/ Product manager/ bacaknd
+- Salavat Zaynulin - Team Lead/ Product manager/ backend
 - Dmitriy Ryazanov - backend
 - Diana Tsoi - Frontend
 - Stepan Sarantsev - backend
